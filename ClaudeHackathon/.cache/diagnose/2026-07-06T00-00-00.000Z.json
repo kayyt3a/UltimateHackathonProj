@@ -75,7 +75,20 @@
     "accuracy_vs_system_status": 0.9583,
     "note": "The young dragons' ears are exactly as accurate as the sensors — never earlier, never later."
   },
-  "diagnosis": null,
+  "diagnosis": {
+    "entry_cited": "Entry 1",
+    "subsystem_scope": "water",
+    "mode": "plumbing",
+    "headline": "Water pressure dropping fast, act now",
+    "recommended_action": "Check the water pipes and shutoff valves for the shelter's water subsystem immediately, and prepare backup water storage.",
+    "reasoning": "Cloudy's note says 'the pipes complain first,' and right now they're shouting — pressure has been falling at 8.6156 kPa/h, well past the -5 kPa/h threshold. In both past cases this exact pattern led to total water failure within a day, so this isn't a drill. Note: the temperature drop (Entry 4) looks scary too, but that ledger entry is disputed — Cloudy thought cold gives early warning, but the data shows temperature and airflow drop in the same hour, so it's not a separate signal here and doesn't apply anyway since this is a water issue, not ventilation.",
+    "predicted_to_escalate": true,
+    "escalation_basis": "pressure has been falling at 8.6156 kPa/h; this pattern preceded total failure in 2 of 2 past water faults",
+    "hours_to_critical_estimate": 8,
+    "confidence": "moderate",
+    "caveat": "Only two past water episodes exist, so this pattern is consistent but the sample is too small for real statistical confidence.",
+    "speech_text": "The water pressure is falling fast — wake the elders now."
+  },
   "ledger_snapshot": [
     {
       "id": "L-001",
@@ -138,9 +151,9 @@
       "updated_at": "2026-08-01T05:56:00Z"
     }
   ],
-  "tokens_used": 0,
-  "estimated_cost_usd": 0,
+  "tokens_used": 4120,
+  "estimated_cost_usd": 0.01192,
   "warnings": [
-    "Live Voice call failed (Could not resolve authentication method. Expected one of apiKey, authToken, credentials, config, or profile to be set. Or for one of the \"X-Api-Key\" or \"Authorization\" headers to be explicitly omitted) and no cached diagnosis exists for 2026-07-06T00:00:00Z. Severity is still valid — it is computed by code, not the model."
+    "Voice agent estimated 24h to critical; replaced with Person A's measured 8h warning-to-failure lead time, the only figure the record supports."
   ]
 }

@@ -63,7 +63,19 @@
     "accuracy_vs_system_status": 1,
     "note": "The young dragons' ears are exactly as accurate as the sensors — never earlier, never later."
   },
-  "diagnosis": null,
+  "diagnosis": {
+    "entry_cited": "Entry 1",
+    "subsystem_scope": "water",
+    "mode": "plumbing",
+    "headline": "Water pressure slipping, not critical yet",
+    "recommended_action": "Keep an eye on the water pressure trend and recheck in a few hours rather than waking anyone now.",
+    "reasoning": "Cloudy's note says 'the pipes complain first' — pressure dropping faster than -5 kPa/h for 3 straight hours means trouble, and right now it's at -7.3 kPa/h but hasn't held that long. It's not confirmed to be the start of the same pattern that caused the two past total water failures, so no need to panic yet. Separately, note that Entry 4's claim about cold air giving early warning is disputed — the data shows temperature and airflow drop together, not one before the other, so don't rely on feeling cold as a warning.",
+    "predicted_to_escalate": false,
+    "escalation_basis": null,
+    "hours_to_critical_estimate": null,
+    "confidence": "low",
+    "caveat": "Only two past water episodes exist in history, so this pattern-match is based on very few examples and the sensors cannot forecast a brand-new fault starting."
+  },
   "ledger_snapshot": [
     {
       "id": "L-001",
@@ -126,9 +138,6 @@
       "updated_at": "2026-08-01T05:56:00Z"
     }
   ],
-  "tokens_used": 0,
-  "estimated_cost_usd": 0,
-  "warnings": [
-    "Live Voice call failed (Could not resolve authentication method. Expected one of apiKey, authToken, credentials, config, or profile to be set. Or for one of the \"X-Api-Key\" or \"Authorization\" headers to be explicitly omitted) and no cached diagnosis exists for 2026-07-05T04:00:00Z. Severity is still valid — it is computed by code, not the model."
-  ]
+  "tokens_used": 3917,
+  "estimated_cost_usd": 0.01093
 }

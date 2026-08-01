@@ -63,7 +63,19 @@
     "accuracy_vs_system_status": 1,
     "note": "The young dragons' ears are exactly as accurate as the sensors — never earlier, never later."
   },
-  "diagnosis": null,
+  "diagnosis": {
+    "entry_cited": "Entry 3",
+    "subsystem_scope": "ventilation",
+    "mode": "ventilation",
+    "headline": "Fans spinning, no air moving",
+    "recommended_action": "Have someone check the ventilation fans and ducts now, since power is on but airflow isn't reaching the room.",
+    "reasoning": "Cloudy's note 'fans running in circles' checks out: the residual is -1.000, well past the -0.5 threshold, meaning the fans draw power but push no air. There's a disputed claim (L-004) that cold air would warn us ahead of time, but the data actually show temperature drops in the very same hour as the airflow problem, not before — so don't count on feeling cold as an early warning.",
+    "predicted_to_escalate": false,
+    "escalation_basis": null,
+    "hours_to_critical_estimate": null,
+    "confidence": "moderate",
+    "caveat": "Only two past ventilation episodes exist and both resolved on their own, so this pattern could go either way and we can't predict a new fault starting from sensors alone."
+  },
   "ledger_snapshot": [
     {
       "id": "L-001",
@@ -126,9 +138,6 @@
       "updated_at": "2026-08-01T05:56:00Z"
     }
   ],
-  "tokens_used": 0,
-  "estimated_cost_usd": 0,
-  "warnings": [
-    "Live Voice call failed (Could not resolve authentication method. Expected one of apiKey, authToken, credentials, config, or profile to be set. Or for one of the \"X-Api-Key\" or \"Authorization\" headers to be explicitly omitted) and no cached diagnosis exists for 2026-07-10T06:00:00Z. Severity is still valid — it is computed by code, not the model."
-  ]
+  "tokens_used": 3865,
+  "estimated_cost_usd": 0.010474
 }

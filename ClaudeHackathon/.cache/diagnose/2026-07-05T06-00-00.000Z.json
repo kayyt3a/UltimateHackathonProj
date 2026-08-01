@@ -75,7 +75,20 @@
     "accuracy_vs_system_status": 1,
     "note": "The young dragons' ears are exactly as accurate as the sensors — never earlier, never later."
   },
-  "diagnosis": null,
+  "diagnosis": {
+    "entry_cited": "Entry 1",
+    "subsystem_scope": "water",
+    "mode": "plumbing",
+    "headline": "Water pressure dropping fast, act now",
+    "recommended_action": "Wake the elders and check the water line/pump for the leak or blockage causing the pressure drop before it fails completely.",
+    "reasoning": "Cloudy's note says 'the pipes complain first,' and right now they're shouting — pressure has fallen steadily for three hours straight. This exact pattern happened before both past water faults, and both times the water failed completely within a day. Entry 4's cold-warning idea is disputed and actually refuted for ventilation, but that doesn't matter here since this is a water problem, not a fan problem.",
+    "predicted_to_escalate": true,
+    "escalation_basis": "pressure has been falling at 7.2504571429 kPa/h; this pattern preceded total failure in 2 of 2 past water faults",
+    "hours_to_critical_estimate": 8,
+    "confidence": "moderate",
+    "caveat": "Only two past water episodes exist, so this pattern, while consistent so far, is based on a very small history.",
+    "speech_text": "The water pressure is falling fast, like it did right before the pipes failed last time — wake the elders now."
+  },
   "ledger_snapshot": [
     {
       "id": "L-001",
@@ -138,9 +151,9 @@
       "updated_at": "2026-08-01T05:56:00Z"
     }
   ],
-  "tokens_used": 0,
-  "estimated_cost_usd": 0,
+  "tokens_used": 4064,
+  "estimated_cost_usd": 0.011328,
   "warnings": [
-    "Live Voice call failed (Could not resolve authentication method. Expected one of apiKey, authToken, credentials, config, or profile to be set. Or for one of the \"X-Api-Key\" or \"Authorization\" headers to be explicitly omitted) and no cached diagnosis exists for 2026-07-05T06:00:00Z. Severity is still valid — it is computed by code, not the model."
+    "Voice agent estimated 24h to critical; replaced with Person A's measured 8h warning-to-failure lead time, the only figure the record supports."
   ]
 }
