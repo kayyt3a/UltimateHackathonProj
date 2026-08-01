@@ -16,6 +16,34 @@ import { EPISODES, TOTAL_EPISODES, waterEscalationPhrase } from "./analysis";
 /** Used when a caveat has to be rewritten and nothing safe survives. */
 const FALLBACK_CAVEAT = `Only ${TOTAL_EPISODES} past episodes exist, so this is a pattern, not a promise.`;
 
+const DISAGREEMENT_WORD = /\b(\w*disput\w*|\w*disagree\w*|\w*contest\w*|\w*contradict\w*|\w*conflict\w*)\b/gi;
+/** "undisputed", "indisputable" — the word negates itself with a prefix. */
+const SELF_NEGATING_PREFIX = /^(un|in|ir|im|non)/i;
+/** "no disagreement", "nobody disputes", "beyond dispute" — the opposite claim. */
+const NEGATED_NEARBY =
+  /\b(no|not|nothing|nobody|none|never|neither|nor|isn'?t|aren'?t|wasn'?t|without|beyond|hardly|barely)\b[\s\w']{0,24}$/i;
+
+/**
+ * Whether the reasoning actually acknowledges the disagreement.
+ *
+ * A bare /disput/i substring test is a false negative waiting to happen:
+ * "the ledger is undisputed" contains it while asserting the exact opposite,
+ * so the model could claim certainty and still pass the guardrail. Require at
+ * least one occurrence that is not immediately negated.
+ */
+export function acknowledgesDisagreement(reasoning: string): boolean {
+  DISAGREEMENT_WORD.lastIndex = 0;
+  for (const match of reasoning.matchAll(DISAGREEMENT_WORD)) {
+    const word = match[0];
+    // "undisputed" / "indisputable" negate themselves.
+    if (SELF_NEGATING_PREFIX.test(word)) continue;
+    const preceding = reasoning.slice(Math.max(0, match.index - 28), match.index);
+    if (NEGATED_NEARBY.test(preceding)) continue;
+    return true;
+  }
+  return false;
+}
+
 /**
  * PART 2 — the Voice agent.
  *
@@ -536,7 +564,7 @@ export function enforceHonesty(
 
   // A disputed ledger entry must be named, not glossed over.
   const disputed = disputedLedgerEntries(watchers, ledger);
-  if (disputed.length > 0 && !/disput/i.test(diagnosis.reasoning)) {
+  if (disputed.length > 0 && !acknowledgesDisagreement(diagnosis.reasoning)) {
     warnings.push(
       `${disputed.length} relevant ledger entr${disputed.length === 1 ? "y is" : "ies are"} disputed but the reasoning did not mention the disagreement.`,
     );

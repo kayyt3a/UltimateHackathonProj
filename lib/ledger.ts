@@ -17,25 +17,54 @@ import type { LedgerEntry } from "./types";
 
 const DEFAULT_PATH = path.join(process.cwd(), "data", "knowledge_ledger.json");
 
-export async function readCurrentLedger(): Promise<LedgerEntry[]> {
+export interface LedgerRead {
+  ledger: LedgerEntry[];
+  /**
+   * Non-empty when the ledger could not be loaded. An empty ledger and a
+   * FAILED ledger look identical downstream — both yield "no relevant entry is
+   * disputed" — so the failure has to be reported, or the Voice agent claims
+   * certainty on knowledge it never actually read.
+   */
+  problems: string[];
+}
+
+export async function readCurrentLedgerChecked(): Promise<LedgerRead> {
+  const problems: string[] = [];
+
   const url = process.env.KNOWLEDGE_LEDGER_URL;
   if (url) {
     try {
       const res = await fetch(url, { cache: "no-store" });
-      if (res.ok) return normalise(await res.json());
-      console.warn(`[ledger] ${url} responded ${res.status}; falling back to file`);
+      if (res.ok) return { ledger: normalise(await res.json()), problems };
+      problems.push(`Knowledge ledger endpoint responded ${res.status}; fell back to the local file.`);
     } catch (err) {
-      console.warn(`[ledger] live endpoint unreachable, falling back to file:`, err);
+      problems.push(
+        `Knowledge ledger endpoint unreachable (${err instanceof Error ? err.message : String(err)}); fell back to the local file.`,
+      );
     }
   }
 
   const filePath = process.env.KNOWLEDGE_LEDGER_PATH ?? DEFAULT_PATH;
   try {
-    return normalise(JSON.parse(await fs.readFile(filePath, "utf8")));
+    const ledger = normalise(JSON.parse(await fs.readFile(filePath, "utf8")));
+    // A live-endpoint failure that the file covered is not worth alarming about.
+    return { ledger, problems: url && ledger.length > 0 ? [] : problems };
   } catch (err) {
-    console.warn(`[ledger] could not read ${filePath}:`, err);
-    return [];
+    problems.push(
+      `Knowledge ledger could not be read (${err instanceof Error ? err.message : String(err)}). ` +
+        `Treat "no disputed entries" as unknown this tick, not as agreement.`,
+    );
+    return { ledger: [], problems };
   }
+}
+
+/**
+ * Soft read — never throws, never reports. The ledger must not be a hard
+ * dependency of the traffic light. Use `readCurrentLedgerChecked` where the
+ * distinction between "empty" and "unreadable" matters.
+ */
+export async function readCurrentLedger(): Promise<LedgerEntry[]> {
+  return (await readCurrentLedgerChecked()).ledger;
 }
 
 /** Accepts either a bare array or `{ entries: [...] }` / `{ ledger: [...] }`. */

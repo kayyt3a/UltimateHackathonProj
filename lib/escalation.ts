@@ -181,6 +181,9 @@ export function relevantLedgerEntries(
   );
 
   return ledger.filter((row) => {
+    // A null/!object row is Person B's data, not ours — one malformed entry
+    // must not throw and take the whole Voice call down with it.
+    if (!row || typeof row !== "object") return false;
     if (row.entry && activeEntries.has(row.entry)) return true;
     if (row.subsystem && activeSubsystems.has(row.subsystem)) return true;
     return false;
@@ -199,6 +202,7 @@ const DISPUTE_FIELDS = ["status", "state", "verification", "verdict", "confidenc
 const DISPUTE_WORDS = /^(disputed|contested|conflicting|conflict|contradicted|unresolved)$/;
 
 export function isDisputed(row: LedgerEntry): boolean {
+  if (!row || typeof row !== "object") return false;
   for (const field of DISPUTE_FIELDS) {
     const value = row[field];
     if (typeof value === "string" && DISPUTE_WORDS.test(value.trim().toLowerCase())) {

@@ -1,7 +1,7 @@
 import { aggregate, severityWarnings } from "./aggregate";
 import { readCache, writeCache } from "./cache";
 import { estimateCostUsd } from "./cost";
-import { readCurrentLedger } from "./ledger";
+import { readCurrentLedgerChecked } from "./ledger";
 import type { DiagnoseResponse, LedgerEntry } from "./types";
 import { getWatchersChecked } from "./watchers";
 import { VOICE_MODEL, voice } from "./voice";
@@ -57,7 +57,9 @@ export async function diagnose(timestamp: string): Promise<DiagnoseResponse> {
   let ledger: LedgerEntry[] = [];
   const ledgerWarnings: string[] = [];
   try {
-    ledger = await readCurrentLedger();
+    const read = await readCurrentLedgerChecked();
+    ledger = read.ledger;
+    ledgerWarnings.push(...read.problems);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     ledgerWarnings.push(`Knowledge ledger unavailable (${message}); ledger panel is empty this tick.`);
