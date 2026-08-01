@@ -22,7 +22,7 @@ const escalatingModelOutput = {
   predicted_to_escalate: true,
   escalation_basis:
     "pressure has been falling at 9.4 kPa/h; this pattern preceded total failure in 2 of 2 past water faults",
-  hours_to_critical_estimate: 14,
+  hours_to_critical_estimate: 24,
   speech_text: "Water pressure is dropping fast. Wake the elders.",
   confidence: "moderate",
   caveat: "Only four episodes exist, so this is a pattern, not a promise.",
@@ -110,7 +110,7 @@ describe("enforceHonesty — the model explains WHY, code decides what it may cl
     expect(warnings).toEqual([]);
     expect(diagnosis.predicted_to_escalate).toBe(true);
     expect(diagnosis.speech_text).toBe("Water pressure is dropping fast. Wake the elders.");
-    expect(diagnosis.hours_to_critical_estimate).toBe(14);
+    expect(diagnosis.hours_to_critical_estimate).toBe(24);
   });
 
   it("overrules a predicted escalation on a ventilation fault", () => {

@@ -11,7 +11,7 @@ import {
   rulePredictedEscalation,
   ruleScope,
 } from "./escalation";
-import { TOTAL_EPISODES, waterEscalationPhrase } from "./analysis";
+import { EPISODES, TOTAL_EPISODES, waterEscalationPhrase } from "./analysis";
 
 /** Used when a caveat has to be rewritten and nothing safe survives. */
 const FALLBACK_CAVEAT = `Only ${TOTAL_EPISODES} past episodes exist, so this is a pattern, not a promise.`;
@@ -479,6 +479,20 @@ export function enforceHonesty(
       warnings.push(
         "Voice agent predicted escalation without a basis; substituted the deterministic rule and historical count.",
       );
+    }
+
+    // "How long do I have" is the number a frightened dragon acts on, so the
+    // model does not get to pick it. There is no deterministic model of time-to-
+    // failure — only the observed fact that both past water faults reached
+    // failure within this window. We report that bound instead of a forecast.
+    const historicalWindow = EPISODES.water.windowHours;
+    if (diagnosis.hours_to_critical_estimate !== historicalWindow) {
+      if (diagnosis.hours_to_critical_estimate !== null) {
+        warnings.push(
+          `Voice agent estimated ${diagnosis.hours_to_critical_estimate}h to critical; replaced with the ${historicalWindow}h historical window, which is the only figure the record supports.`,
+        );
+      }
+      diagnosis.hours_to_critical_estimate = historicalWindow;
     }
     const speech =
       typeof raw.speech_text === "string" ? raw.speech_text.trim() : "";

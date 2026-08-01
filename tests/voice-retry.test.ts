@@ -34,7 +34,7 @@ const CLEAN = {
   predicted_to_escalate: true,
   escalation_basis:
     "pressure has been falling at 9.4 kPa/h; this pattern preceded total failure in 2 of 2 past water faults",
-  hours_to_critical_estimate: 14,
+  hours_to_critical_estimate: 24,
   speech_text: "Water pressure is dropping fast. Wake the elders.",
   confidence: "moderate",
   caveat: "Only four episodes exist, so this is a pattern, not a promise.",
