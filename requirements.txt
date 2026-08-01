@@ -1,0 +1,16 @@
+# Python dependencies for prepare_data.py and eda.ipynb.
+#
+#   pip install -r requirements.txt
+#   python3 prepare_data.py          # or: cd ClaudeHackathon && npm run data:refresh
+#
+# Deliberately unpinned: prepared_data.json was generated with an earlier
+# toolchain, and regenerating under different numpy/sklearn builds shifts
+# floating-point results in the ~12th significant figure. That is cosmetic —
+# is_novel, the thresholds and every verdict are unchanged — but it does
+# produce a large, noisy diff. If you regenerate and see one, that's why;
+# check the derived constants, not the line count.
+numpy
+pandas
+scipy
+scikit-learn   # GaussianMixture / StandardScaler, imported inside fit_novelty_model
+matplotlib     # eda.ipynb figures only; prepare_data.py does not need it
