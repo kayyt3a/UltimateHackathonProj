@@ -99,6 +99,6 @@
   "tokens_used": 0,
   "estimated_cost_usd": 0,
   "warnings": [
-    "Live Voice call failed (Could not resolve authentication method. Expected either apiKey or authToken to be set. Or for one of the \"X-Api-Key\" or \"Authorization\" headers to be explicitly omitted) and no cached diagnosis exists for 2026-07-10T06:00:00Z. Severity is still valid — it is computed by code, not the model."
+    "Live Voice call failed (Could not resolve authentication method. Expected one of apiKey, authToken, credentials, config, or profile to be set. Or for one of the \"X-Api-Key\" or \"Authorization\" headers to be explicitly omitted) and no cached diagnosis exists for 2026-07-10T06:00:00Z. Severity is still valid — it is computed by code, not the model."
   ]
 }

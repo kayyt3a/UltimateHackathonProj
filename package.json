@@ -9,7 +9,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "prewarm": "tsx scripts/prewarm.ts",
-    "voice:demo": "tsx scripts/voice-demo.ts"
+    "voice:demo": "tsx scripts/voice-demo.ts",
+    "verify:watchers": "tsx scripts/verify-watchers.ts",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.115.0",

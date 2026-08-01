@@ -48,8 +48,22 @@ export async function GET(request: Request) {
     );
   }
 
-  const response = await diagnose(ts);
-  return NextResponse.json(response, {
-    headers: { "cache-control": "no-store" },
-  });
+  try {
+    const response = await diagnose(ts);
+    return NextResponse.json(response, {
+      headers: { "cache-control": "no-store" },
+    });
+  } catch (err) {
+    // Only reached if the watcher layer failed AND no cache exists — we have no
+    // severity to report, so say so plainly rather than leaking a stack trace.
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(`[api/diagnose] unrecoverable failure for ${ts}:`, err);
+    return NextResponse.json(
+      {
+        error: `Could not produce a diagnosis for ${ts}: ${message}`,
+        hint: "Run `npm run prewarm` so the cache can cover this timestamp.",
+      },
+      { status: 503, headers: { "cache-control": "no-store" } },
+    );
+  }
 }

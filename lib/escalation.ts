@@ -1,5 +1,6 @@
 import type { LedgerEntry, Mode, Subsystem, WatcherOutput } from "./types";
 import { firingWatchers } from "./aggregate";
+import { EPISODES, onsetPhrase, waterEscalationPhrase } from "./analysis";
 
 /**
  * The deterministic honesty rules. These are computed in code and then used
@@ -16,12 +17,15 @@ const WATER_ENTRIES = new Set(["Entry 1", "Entry 4"]);
 /** Entry 3 firing scopes the recommendation to ventilation. */
 const VENTILATION_ENTRIES = new Set(["Entry 3"]);
 
-/** Historical record. Only four episodes exist — say so, every time. */
+/**
+ * Historical record, re-exported from Person A's analysis. Only four episodes
+ * exist — say so, every time. Edit `lib/analysis.ts`, not this.
+ */
 export const HISTORY = {
-  waterFaultsThatReachedFailure: 2,
-  waterFaultsTotal: 2,
-  ventilationFaultsThatSelfResolved: 2,
-  ventilationFaultsTotal: 2,
+  waterFaultsThatReachedFailure: EPISODES.water.reachedFailure,
+  waterFaultsTotal: EPISODES.water.total,
+  ventilationFaultsThatSelfResolved: EPISODES.ventilation.selfResolved,
+  ventilationFaultsTotal: EPISODES.ventilation.total,
 } as const;
 
 export interface EscalationRuling {
@@ -56,8 +60,7 @@ export function rulePredictedEscalation(
   if (!entry1) {
     return {
       allowed: false,
-      reason:
-        "Entry 1 is not firing. A brand-new fault starting (green->amber onset) is not predictable — 0 of 24 onset transitions were caught historically.",
+      reason: `Entry 1 is not firing. A brand-new fault starting (green->amber onset) is not predictable — ${onsetPhrase()} historically.`,
       permittedBasis: null,
       sourceEntry: null,
     };
@@ -93,7 +96,7 @@ export function rulePredictedEscalation(
       "Entry 1 is firing on water with the pressure-slope rule active — the one signature with historical escalation evidence.",
     permittedBasis:
       `pressure has been falling at ${rate}; this pattern preceded total failure in ` +
-      `${HISTORY.waterFaultsThatReachedFailure} of ${HISTORY.waterFaultsTotal} past water faults`,
+      waterEscalationPhrase(),
     sourceEntry: "Entry 1",
   };
 }
@@ -176,11 +179,31 @@ export function relevantLedgerEntries(
   });
 }
 
+/**
+ * Whether a ledger row represents contested knowledge.
+ *
+ * Deliberately tolerant about Person B's field naming and vocabulary: a
+ * disagreement that is silently missed because the field was called `state`
+ * instead of `status` would let the Voice agent claim certainty it has not
+ * earned. Erring toward "this is disputed" is the safe direction.
+ */
+const DISPUTE_FIELDS = ["status", "state", "verification", "verdict", "confidence"];
+const DISPUTE_WORDS = /^(disputed|contested|conflicting|conflict|contradicted|unresolved)$/;
+
+export function isDisputed(row: LedgerEntry): boolean {
+  for (const field of DISPUTE_FIELDS) {
+    const value = row[field];
+    if (typeof value === "string" && DISPUTE_WORDS.test(value.trim().toLowerCase())) {
+      return true;
+    }
+  }
+  // Some ledgers carry an explicit boolean instead of a status string.
+  return row.disputed === true;
+}
+
 export function disputedLedgerEntries(
   watchers: WatcherOutput[],
   ledger: LedgerEntry[],
 ): LedgerEntry[] {
-  return relevantLedgerEntries(watchers, ledger).filter(
-    (row) => String(row.status).toLowerCase() === "disputed",
-  );
+  return relevantLedgerEntries(watchers, ledger).filter(isDisputed);
 }

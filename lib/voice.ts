@@ -11,6 +11,7 @@ import {
   rulePredictedEscalation,
   ruleScope,
 } from "./escalation";
+import { waterEscalationPhrase } from "./analysis";
 
 /**
  * PART 2 — the Voice agent.
@@ -24,7 +25,22 @@ import {
  */
 
 export const VOICE_MODEL = "claude-sonnet-5";
-export const VOICE_MAX_TOKENS = 2000;
+
+/**
+ * Sonnet 5 runs adaptive thinking by default, and `max_tokens` caps thinking
+ * AND response text together — so a tight budget truncates the JSON mid-object
+ * and the parse fails. The briefing itself is only a few hundred tokens; the
+ * headroom is for thinking.
+ */
+export const VOICE_MAX_TOKENS = 8000;
+
+/**
+ * All the hard reasoning (severity, escalation permission, scope, which ledger
+ * rows are disputed) is already done deterministically and handed to the model.
+ * Its remaining job is prose, so low effort is the right trade for the one
+ * expensive call that fires often.
+ */
+export const VOICE_EFFORT = "low" as const;
 
 export const VOICE_SYSTEM_PROMPT = `You are the night-watch assistant for Reid Library, a dragon shelter with
 damaged automation. A frightened dragon reads your output at 3am and decides
@@ -140,12 +156,26 @@ Return JSON only, matching the required schema.`;
 
 export interface VoiceResult {
   diagnosis: Diagnosis;
+  /** Summed across every attempt this tick, including a corrective retry. */
   tokens_used: number;
   input_tokens: number;
   output_tokens: number;
   /** Guardrails that had to overrule the model. Empty is the happy path. */
   warnings: string[];
   model: string;
+  attempts: number;
+}
+
+export interface HonestyAudit {
+  diagnosis: Diagnosis;
+  warnings: string[];
+  /**
+   * Violations code cannot silently repair — a fabricated probability in prose
+   * a dragon actually reads. These trigger a corrective retry, then redaction.
+   * Everything else (scope, escalation, nullability) is corrected in place and
+   * reported as a warning only.
+   */
+  hardViolations: string[];
 }
 
 let cachedClient: Anthropic | null = null;
@@ -154,59 +184,201 @@ function client(): Anthropic {
   return cachedClient;
 }
 
-/**
- * Call the Voice agent. Callers must only invoke this when severity is amber or
- * red — `diagnose()` enforces that.
- */
-export async function voice(
-  bundle: WatcherBundle,
-  ledger: LedgerEntry[],
-): Promise<VoiceResult> {
+async function callModel(messages: Anthropic.MessageParam[]) {
   const response = await client().messages.create({
     model: VOICE_MODEL,
     max_tokens: VOICE_MAX_TOKENS,
     system: VOICE_SYSTEM_PROMPT,
+    thinking: { type: "adaptive" },
     output_config: {
+      effort: VOICE_EFFORT,
       format: { type: "json_schema", schema: DIAGNOSIS_SCHEMA },
     },
-    messages: [{ role: "user", content: buildVoicePrompt(bundle, ledger) }],
+    messages,
   });
+
+  if (response.stop_reason === "max_tokens") {
+    // Say what actually happened rather than surfacing a JSON parse error.
+    throw new Error(
+      `Voice agent hit max_tokens (${VOICE_MAX_TOKENS}); the briefing was truncated mid-JSON. Raise VOICE_MAX_TOKENS.`,
+    );
+  }
+  if (response.stop_reason === "refusal") {
+    throw new Error("Voice agent declined to produce a briefing (stop_reason: refusal).");
+  }
 
   const text = response.content.find((b) => b.type === "text");
   if (!text || text.type !== "text") {
     throw new Error("Voice agent returned no text block");
   }
 
-  const raw = JSON.parse(text.text) as Record<string, unknown>;
-  const { diagnosis, warnings } = enforceHonesty(raw, bundle.watchers, ledger);
+  let raw: Record<string, unknown>;
+  try {
+    raw = JSON.parse(text.text) as Record<string, unknown>;
+  } catch (err) {
+    throw new Error(
+      `Voice agent returned unparseable JSON: ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
+
+  return { raw, response, assistantText: text.text };
+}
+
+/**
+ * Call the Voice agent. Callers must only invoke this when severity is amber or
+ * red — `diagnose()` enforces that.
+ *
+ * If the first briefing breaks an honesty rule that cannot be corrected by code
+ * alone (a fabricated probability in the prose a dragon actually reads), we give
+ * the model one corrective turn rather than shipping it. If it breaks the rule
+ * twice, the offending sentences are redacted. Tokens are summed across every
+ * attempt so the cost readout stays truthful.
+ */
+export async function voice(
+  bundle: WatcherBundle,
+  ledger: LedgerEntry[],
+): Promise<VoiceResult> {
+  const prompt = buildVoicePrompt(bundle, ledger);
+  const messages: Anthropic.MessageParam[] = [{ role: "user", content: prompt }];
+
+  let inputTokens = 0;
+  let outputTokens = 0;
+  let attempts = 0;
+
+  let { raw, response, assistantText } = await callModel(messages);
+  attempts += 1;
+  inputTokens += response.usage.input_tokens;
+  outputTokens += response.usage.output_tokens;
+
+  let audit = enforceHonesty(raw, bundle.watchers, ledger);
+
+  if (audit.hardViolations.length > 0) {
+    // One corrective turn. The model sees exactly which rule it broke.
+    messages.push({ role: "assistant", content: assistantText });
+    messages.push({
+      role: "user",
+      content:
+        `That briefing broke a rule you must not break:\n` +
+        audit.hardViolations.map((v) => `- ${v}`).join("\n") +
+        `\n\nA frightened dragon reads this at 3am. State only the deterministic rule and the ` +
+        `historical count (for example "${waterEscalationPhrase()}"). Never a percentage, a ` +
+        `probability, or odds — only four episodes exist. Return the corrected JSON.`,
+    });
+
+    const retry = await callModel(messages);
+    attempts += 1;
+    inputTokens += retry.response.usage.input_tokens;
+    outputTokens += retry.response.usage.output_tokens;
+
+    const retryAudit = enforceHonesty(retry.raw, bundle.watchers, ledger);
+    const firstViolations = audit.hardViolations;
+
+    if (retryAudit.hardViolations.length === 0) {
+      audit = {
+        ...retryAudit,
+        warnings: [
+          ...retryAudit.warnings,
+          `First briefing was rejected and regenerated: ${firstViolations.join(" ")}`,
+        ],
+      };
+    } else {
+      // Twice is enough. Redact rather than ship a fabricated number.
+      audit = redactHardViolations(retryAudit);
+      audit.warnings.unshift(
+        `Voice agent stated a probability twice; offending sentences were redacted before display.`,
+      );
+    }
+    response = retry.response;
+  }
 
   return {
-    diagnosis,
-    input_tokens: response.usage.input_tokens,
-    output_tokens: response.usage.output_tokens,
-    tokens_used: response.usage.input_tokens + response.usage.output_tokens,
-    warnings,
+    diagnosis: audit.diagnosis,
+    input_tokens: inputTokens,
+    output_tokens: outputTokens,
+    tokens_used: inputTokens + outputTokens,
+    warnings: audit.warnings,
     model: response.model,
+    attempts,
   };
 }
 
-const PROBABILITY_PATTERNS: Array<[RegExp, string]> = [
-  [/\b\d{1,3}\s?%/, "a percentage"],
-  [/\b\d{1,3}(\.\d+)?\s*percent\b/i, "a percentage"],
-  [/\bprobability\b/i, "the word 'probability'"],
+/** Sentence-level scrub of anything that survived two attempts. */
+function redactHardViolations(audit: HonestyAudit): HonestyAudit {
+  const diagnosis = { ...audit.diagnosis };
+  const warnings = [...audit.warnings];
+
+  for (const field of ["reasoning", "headline", "recommended_action", "speech_text"] as const) {
+    const value = diagnosis[field];
+    if (typeof value !== "string") continue;
+    if (scanForProbabilityClaims(field, value).length === 0) continue;
+
+    const kept = value
+      .split(/(?<=[.!?])\s+/)
+      .filter((sentence) => scanForProbabilityClaims(field, sentence).length === 0)
+      .join(" ")
+      .trim();
+
+    if (kept) {
+      diagnosis[field] = kept;
+    } else if (field === "reasoning") {
+      diagnosis.reasoning =
+        "Cloudy's note matches what the sensors are showing now. Only four past episodes exist, so this is a pattern, not a promise.";
+    } else if (field === "speech_text") {
+      delete diagnosis.speech_text;
+    } else {
+      diagnosis[field] = "See the watcher evidence.";
+    }
+    warnings.push(`Redacted a probability claim from "${field}".`);
+  }
+
+  return { diagnosis, warnings, hardViolations: [] };
+}
+
+/**
+ * Words that make a statement a claim about likelihood. These are banned
+ * outright — four episodes cannot support any of them.
+ */
+const PROBABILITY_WORDS: Array<[RegExp, string]> = [
+  [/\bprobabilit(y|ies)\b/i, "the word 'probability'"],
   [/\bodds\b/i, "the word 'odds'"],
-  [/\b(chance|likelihood)\s+(of|that|it)\b/i, "a stated chance"],
+  [/\blikelihood\b/i, "the word 'likelihood'"],
+  [/\b(chance|chances)\s+(of|that|it|the)\b/i, "a stated chance"],
+  [/\b\d{1,3}(\.\d+)?\s*(%|percent)\s+(chance|probability|likely|risk)\b/i, "a percentage chance"],
 ];
 
-function scanForProbabilityClaims(field: string, value: string): string[] {
+/** A bare number-percent — a *measurement* unless it sits beside a forecast. */
+const PERCENT = /\b\d{1,3}(\.\d+)?\s*(%|percent\b)/i;
+
+/**
+ * Forecast language that turns a nearby percentage into a prediction.
+ * "airflow is at 62% of nominal" is a reading; "62% likely to fail" is a lie.
+ */
+const FORECAST = /\b(likely|unlikely|risk|expect|predicts?|forecast|will fail|going to fail|by (dawn|morning|midnight))\b/i;
+
+/**
+ * Sentence-scoped so a legitimate reading ("airflow at 62% of nominal", which
+ * is exactly what Person B's evidence says) is not mistaken for a forecast.
+ * A false positive costs a wasted retry; a false negative reads a fabricated
+ * number aloud to a frightened dragon. We tolerate the first, never the second.
+ */
+export function scanForProbabilityClaims(field: string, value: string): string[] {
   const hits: string[] = [];
-  for (const [pattern, label] of PROBABILITY_PATTERNS) {
-    if (pattern.test(value)) {
+
+  for (const sentence of value.split(/(?<=[.!?])\s+/)) {
+    for (const [pattern, label] of PROBABILITY_WORDS) {
+      if (pattern.test(sentence)) {
+        hits.push(
+          `Voice output field "${field}" contained ${label}; the sample of four episodes cannot support a probability.`,
+        );
+      }
+    }
+    if (PERCENT.test(sentence) && FORECAST.test(sentence)) {
       hits.push(
-        `Voice output field "${field}" contained ${label}; the sample of four episodes cannot support a probability.`,
+        `Voice output field "${field}" paired a percentage with a forecast; only the deterministic rule and historical count may be stated.`,
       );
     }
   }
+
   return hits;
 }
 
@@ -219,8 +391,9 @@ export function enforceHonesty(
   raw: Record<string, unknown>,
   watchers: WatcherOutput[],
   ledger: LedgerEntry[],
-): { diagnosis: Diagnosis; warnings: string[] } {
+): HonestyAudit {
   const warnings: string[] = [];
+  const hardViolations: string[] = [];
   const ruling = rulePredictedEscalation(watchers);
   const scope = ruleScope(watchers);
 
@@ -306,17 +479,22 @@ export function enforceHonesty(
   // No fabricated percentages, anywhere.
   for (const field of ["reasoning", "escalation_basis", "headline", "recommended_action", "speech_text"] as const) {
     const value = diagnosis[field];
-    if (typeof value === "string") {
-      const hits = scanForProbabilityClaims(field, value);
-      if (hits.length > 0) {
-        warnings.push(...hits);
-        if (field === "escalation_basis" && ruling.permittedBasis) {
-          diagnosis.escalation_basis = ruling.permittedBasis;
-          warnings.push(
-            "escalation_basis replaced with the deterministic rule and historical count.",
-          );
-        }
-      }
+    if (typeof value !== "string") continue;
+
+    const hits = scanForProbabilityClaims(field, value);
+    if (hits.length === 0) continue;
+    warnings.push(...hits);
+
+    if (field === "escalation_basis") {
+      // Structured field with one correct value — repair it in place.
+      diagnosis.escalation_basis = ruling.permittedBasis;
+      warnings.push(
+        "escalation_basis replaced with the deterministic rule and historical count.",
+      );
+    } else {
+      // Free prose a dragon reads. Code cannot rewrite this safely, so it is a
+      // hard violation: the caller retries, then redacts. Never ships as-is.
+      hardViolations.push(...hits);
     }
   }
 
@@ -328,5 +506,5 @@ export function enforceHonesty(
     );
   }
 
-  return { diagnosis, warnings };
+  return { diagnosis, warnings, hardViolations };
 }

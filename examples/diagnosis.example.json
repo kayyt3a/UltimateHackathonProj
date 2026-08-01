@@ -1,0 +1,37 @@
+{
+  "_README": "ILLUSTRATIVE ONLY — hand-written by Person C to show the shape of the `diagnosis` object. This is NOT model output and must never be presented as a real briefing. Use it to build and style the UI while the amber/red cache files are unfilled; once `npm run prewarm` runs with an API key, build against the real cached responses in .cache/diagnose/ instead.",
+
+  "escalating_water_red": {
+    "entry_cited": "Entry 1",
+    "subsystem_scope": "water",
+    "mode": "plumbing",
+    "headline": "Water pressure falling for three hours",
+    "recommended_action": "Wake the elders now and close the main valve before the tanks drain.",
+    "reasoning": "Cloudy wrote it plain: when the pressure slides like this and nobody catches it, the pools are cold and the taps are dry by morning. That is the same slide the sensors are showing tonight. Only four episodes were ever recorded, so treat this as a pattern, not a promise.",
+    "predicted_to_escalate": true,
+    "escalation_basis": "pressure has been falling at 9.4 kPa/h; this pattern preceded total failure in 2 of 2 past water faults",
+    "hours_to_critical_estimate": 14,
+    "speech_text": "Water pressure has been dropping for three hours. Wake the elders.",
+    "confidence": "moderate",
+    "caveat": "Only two past water faults exist to compare against, so this is a pattern, not a prediction."
+  },
+
+  "non_escalating_ventilation_red": {
+    "entry_cited": "Entry 3",
+    "subsystem_scope": "ventilation",
+    "mode": "ventilation",
+    "headline": "East vent is loud and moving less air",
+    "recommended_action": "Open the inner doors for airflow and have someone look at the east vent at first light.",
+    "reasoning": "Cloudy heard this rattle and called it a bearing about to seize — but the maintenance log disagrees with him, and says it was a loose grille cover, replaced twice. You may feel the air go stale before it gets better. I cannot tell you which of them is right.",
+    "predicted_to_escalate": false,
+    "escalation_basis": null,
+    "hours_to_critical_estimate": null,
+    "confidence": "low",
+    "caveat": "Cloudy's note and the maintenance log disagree about this rattle, and both past ventilation faults resolved on their own.",
+    "_note": "speech_text is ABSENT, not null — nothing is read aloud unless predicted_to_escalate is true. Ventilation can never predict escalation."
+  },
+
+  "green_has_no_diagnosis": {
+    "_note": "When severity is green the top-level `diagnosis` field is null and no Voice call is made. tokens_used is 0. Render the calm state from `watchers` alone."
+  }
+}

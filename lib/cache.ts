@@ -21,16 +21,31 @@ export function cachePath(timestamp: string): string {
   return path.join(CACHE_DIR, `${cacheKey(timestamp)}.json`);
 }
 
+/**
+ * Writes atomically (temp file + rename) so a reader during the demo can never
+ * observe a half-written JSON file, and returns false rather than throwing if
+ * the filesystem is read-only. A cache write failing must never fail the
+ * request that produced a perfectly good diagnosis.
+ */
 export async function writeCache(
   timestamp: string,
   response: DiagnoseResponse,
-): Promise<string> {
+): Promise<boolean> {
   const file = cachePath(timestamp);
-  await fs.mkdir(path.dirname(file), { recursive: true });
   // Never persist the cache-fallback marker — a cached tick is a fresh tick.
   const { served_from_cache: _ignored, ...payload } = response;
-  await fs.writeFile(file, JSON.stringify(payload, null, 2) + "\n", "utf8");
-  return file;
+  const tmp = `${file}.${process.pid}.${Date.now()}.tmp`;
+
+  try {
+    await fs.mkdir(path.dirname(file), { recursive: true });
+    await fs.writeFile(tmp, JSON.stringify(payload, null, 2) + "\n", "utf8");
+    await fs.rename(tmp, file);
+    return true;
+  } catch (err) {
+    console.warn(`[cache] could not write ${file}:`, err);
+    await fs.rm(tmp, { force: true }).catch(() => {});
+    return false;
+  }
 }
 
 export async function readCache(
