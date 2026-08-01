@@ -1,0 +1,105 @@
+{
+  "severity": "red",
+  "watchers": [
+    {
+      "entry": "Entry 1",
+      "status": "firing",
+      "subsystem": "water",
+      "evidence": [
+        {
+          "hour": "2026-07-05T04:00:00Z",
+          "signal": "pressure_slope_6h",
+          "value": -9.4,
+          "threshold": -5
+        }
+      ],
+      "reasoning": "Pressure has fallen at 9.4 kPa/h for the last 3 hours."
+    },
+    {
+      "entry": "Entry 3",
+      "status": "quiet",
+      "subsystem": "ventilation",
+      "evidence": [],
+      "reasoning": "East vent airflow steady at 91% of nominal."
+    },
+    {
+      "entry": "Entry 4",
+      "status": "watching",
+      "subsystem": "water",
+      "evidence": [
+        {
+          "hour": "2026-07-05T04:00:00Z",
+          "signal": "refill_cycle_minutes",
+          "value": 44,
+          "threshold": 40
+        }
+      ],
+      "reasoning": "Refill cycles have shortened to 44 minutes, close to the 40 minute leak threshold."
+    },
+    {
+      "entry": "Entry 5",
+      "status": "quiet",
+      "subsystem": null,
+      "evidence": [],
+      "reasoning": "No cross-subsystem correlation above threshold."
+    }
+  ],
+  "listener_validation": {
+    "entry": "Entry 2",
+    "accuracy_vs_system_status": 1,
+    "note": "The young dragons' ears are exactly as accurate as the sensors."
+  },
+  "diagnosis": null,
+  "ledger_snapshot": [
+    {
+      "id": "L-001",
+      "entry": "Entry 1",
+      "subsystem": "water",
+      "claim": "A pressure slope steeper than -5 kPa/h sustained for 3 hours has preceded total water failure in every recorded case.",
+      "status": "confirmed",
+      "source": "Cloudy's note, reconciled against sensor log 2026-06-30",
+      "updated_at": "2026-07-01T09:00:00Z"
+    },
+    {
+      "id": "L-002",
+      "entry": "Entry 2",
+      "subsystem": null,
+      "claim": "The young dragons' ears track system_status as accurately as the sensors do.",
+      "status": "confirmed",
+      "source": "Listener validation, accuracy 1.0 vs system_status",
+      "updated_at": "2026-07-02T11:30:00Z"
+    },
+    {
+      "id": "L-003",
+      "entry": "Entry 3",
+      "subsystem": "ventilation",
+      "claim": "The east vent rattle means the fan bearing is about to seize.",
+      "status": "disputed",
+      "source": "Cloudy's note vs. maintenance log 2026-07-08 — the log records the rattle as a loose grille cover, replaced twice with no bearing fault.",
+      "updated_at": "2026-07-09T16:45:00Z"
+    },
+    {
+      "id": "L-004",
+      "entry": "Entry 4",
+      "subsystem": "water",
+      "claim": "Tank refill cycles shorter than 40 minutes indicate a leak downstream of the main valve.",
+      "status": "unverified",
+      "source": "Cloudy's note; no reconciled sensor evidence yet",
+      "updated_at": "2026-07-01T09:00:00Z"
+    },
+    {
+      "id": "L-005",
+      "entry": "Entry 5",
+      "subsystem": null,
+      "claim": "Two past ventilation faults resolved on their own within 12 hours; two past water faults did not.",
+      "status": "confirmed",
+      "source": "Episode history, all four recorded episodes",
+      "updated_at": "2026-07-03T08:15:00Z"
+    }
+  ],
+  "tokens_used": 0,
+  "estimated_cost_usd": 0,
+  "warnings": [
+    "Live Voice call failed (Could not resolve authentication method. Expected either apiKey or authToken to be set. Or for one of the \"X-Api-Key\" or \"Authorization\" headers to be explicitly omitted) and no cached diagnosis exists for 2026-07-05T04:00:00Z. Severity is still valid — it is computed by code, not the model."
+  ]
+}

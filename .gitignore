@@ -1,0 +1,10 @@
+node_modules/
+.next/
+next-env.d.ts
+*.tsbuildinfo
+.env
+.env.local
+.DS_Store
+
+# The pre-warmed demo cache IS committed — Person D falls back to it on stage.
+# .cache/diagnose/*.json is intentionally tracked.
