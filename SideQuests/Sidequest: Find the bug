@@ -1,0 +1,53 @@
+There are four bugs in the code: pod.pyPY
+1. Index out of range
+for i in range(n+1):
+This loops from 0 to n, but the final valid index is n - 1.
+for i in range(n):
+2. cur.stock does not exist
+The Pod class never defines a stock attribute:
+print(f"Pod {cur.name} | Stock: {cur.stock} ...")
+You only define:
+cur.netWater
+cur.netFood
+cur.netMedicine
+Remove cur.stock or add the attribute to the class.
+3. The counter is not incrementing
+counter = 1
+This resets it to 1 every loop. It should be:
+counter += 1
+Otherwise, pods with equal water priority may cause Python to compare two Pod objects and raise:
+TypeError: '<' not supported between instances of 'Pod' and 'Pod'
+4. heappop() returns the entire tuple
+You push this:
+(pod.netWater, counter, pod)
+So this:
+pod = heappop(priorityHeap)
+returns the full tuple, not just the pod.
+Use:
+_, _, pod = heappop(priorityHeap)
+result.append(pod)
+Corrected sections:
+def listPods(pods: list):
+    for cur in pods:
+        print(
+            f"Pod {cur.name} | Needs: "
+            f"{cur.netWater} Water, "
+            f"{cur.netFood} Food, "
+            f"{cur.netMedicine} Medicine"
+        )
+
+
+def getWaterPriorities(pods: list):
+    priorityHeap = []
+
+    counter = 0
+    for pod in pods:
+        heappush(priorityHeap, (pod.netWater, counter, pod))
+        counter += 1
+
+    result = []
+    while priorityHeap:
+        _, _, pod = heappop(priorityHeap)
+        result.append(pod)
+
+    return result
