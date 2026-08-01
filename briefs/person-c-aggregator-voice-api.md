@@ -4,148 +4,154 @@ Paste everything below into a fresh Claude Code session.
 
 ---
 
-PROJECT: "Cloudy's Second Opinion" — a hackathon tool for dragons sheltering in
-Reid Library after an attack damaged the building's power, water and ventilation
-systems. Their late engineer Cloudy left 5 handwritten notes describing failure
-patterns; nobody ever connected them to his sensor data. Five cheap AI agents each
-watch one pattern; when one escalates, a larger "Voice" model speaks as Cloudy.
+PROJECT: "Cloudy's Second Opinion" — Reid Library's late engineer Cloudy left 5
+handwritten notes describing failure patterns; nobody ever connected them to
+his sensor data. Four deterministic watchers detect the patterns instantly;
+when one fires, a Voice agent speaks as Cloudy, including an honest prediction
+of whether an already-firing warning is likely to get worse.
 
 Stack: Next.js (App Router) + TypeScript, Claude API.
 
 I AM PERSON C. I own three things: the deterministic severity aggregator, the
-Voice agent, and the /api/diagnose route that ties the system together. I also
-own conflict detection for the third organizer hint (see PART 4).
+Voice agent, and the /api/diagnose route.
 
-MY INPUT — Person B exports checkAllWatchers(timestamp) returning an array of 5:
+MY INPUT — Person B exports checkAllWatchers(timestamp) returning:
 ```json
-[
-  { "entry": "Entry 1", "status": "firing", "confidence": "high",
-    "conflict": false, "conflict_note": null,
-    "evidence": [ { "hour": "2026-07-05T04:00:00Z",
-      "signal": "water_pressure_kpa", "value": 314.4, "baseline": 348,
-      "source": "sensor" } ],
-    "reasoning": "Pressure fell for four straight hours while flow fell with it." },
-  { "entry": "Entry 2", "status": "watching", "confidence": "high", "conflict": false, "conflict_note": null, "evidence": [], "reasoning": "..." },
-  { "entry": "Entry 3", "status": "quiet", "confidence": "high", "conflict": false, "conflict_note": null, "evidence": [], "reasoning": "..." },
-  { "entry": "Entry 4", "status": "quiet", "confidence": "high", "conflict": false, "conflict_note": null, "evidence": [], "reasoning": "..." },
-  { "entry": "Entry 5", "status": "quiet", "confidence": "high", "conflict": false, "conflict_note": null, "evidence": [], "reasoning": "..." }
-]
+{
+  "watchers": [
+    { "entry": "Entry 1", "status": "firing", "subsystem": "water",
+      "evidence": [ { "hour": "2026-07-05T04:00:00Z",
+        "signal": "pressure_slope_6h", "value": -9.4, "threshold": -5 } ],
+      "reasoning": "Pressure has fallen at 9.4 kPa/h for the last 3 hours." },
+    { "entry": "Entry 3", "status": "quiet", "subsystem": "ventilation", "evidence": [], "reasoning": "..." },
+    { "entry": "Entry 4", "status": "quiet", "subsystem": null, "evidence": [], "reasoning": "..." },
+    { "entry": "Entry 5", "status": "quiet", "subsystem": null, "evidence": [], "reasoning": "..." }
+  ],
+  "listener_validation": { "entry": "Entry 2", "accuracy_vs_system_status": 1.0,
+    "note": "The young dragons' ears are exactly as accurate as the sensors." }
+}
 ```
-Until their code lands, hardcode fixtures in this shape and build against them.
+Until their code lands, hardcode a fixture in this shape.
 
-=== PART 1: AGGREGATOR (/lib/aggregate.ts) — plain code, NO LLM call ===
+=== PART 1: AGGREGATOR (/lib/aggregate.ts) — plain code, NO LLM ===
 ```
-any watcher "firing"  -> "red"
+any watcher "firing"  -> "red"      (note: in practice "firing" tracks real
+                                      system_status closely since the rules
+                                      were derived to match it)
 else any "watching"   -> "amber"
 else                  -> "green"
 ```
-Worst-of-five, never averaged. This is a deliberate design decision and a talking
-point on stage: the traffic light must never hallucinate green during a real
-emergency, so severity is computed from structured outputs by code. The model's
-job is explaining WHY, never deciding HOW BAD.
+Worst-of-4 (Entry 2's listener_validation NEVER enters this calculation — it's
+informational only, rendered in its own UI panel). This is a deliberate
+design decision and a talking point: the traffic light must never hallucinate
+green during a real emergency, so severity is computed from structured output
+by code. The model's job is explaining WHY, never deciding HOW BAD.
 
 === PART 2: VOICE AGENT (/lib/voice.ts) ===
-Runs ONLY when severity is amber or red — the one expensive call in the system,
-use claude-sonnet-5. It receives all five watcher outputs (including the quiet
-ones; absence is context) plus the full text of data/cloudys_logs.md.
+Runs ONLY when severity is amber or red — the one expensive call that fires
+often, use claude-sonnet-5. Receives all 4 watcher outputs, the
+listener_validation note, and the CURRENT knowledge ledger (from Person B's
+knowledge_ledger.json / live endpoint) — so it can reference recently
+reconciled information, not just Cloudy's original five.
 
-Write the prompt so Cloudy:
- - speaks in first person, plain and slightly folksy, matching his real notes —
-   never corporate, never "I have detected an anomaly"
- - cites actual numbers pulled from the evidence arrays. Vague output is a
-   failure; our judging criteria demand specific values
- - names which of his own entries this is
- - recommends action scoped to ONLY the sick subsystem
- - keeps the quote under two sentences
- - if any watcher has conflict: true (see PART 4), explicitly narrates the
-   disagreement instead of silently picking a side
+Critical honesty rules — do not skip these, they're what separates a
+trustworthy system from a hallucinating one:
+- **Never predict Green→Amber (a brand-new fault starting).** Person A's
+  analysis proved this is impossible (0/24 onset transitions caught). The
+  Voice agent must not claim to see a new fault coming.
+- **Only predict Amber→Red** (an already-firing warning escalating), and only
+  when Entry 1 is firing on the water subsystem with the pressure-slope rule
+  active. State the historical rate honestly: "2 of 2 past cases with this
+  signature reached failure" — never a fabricated percentage like "87%
+  chance."
+- If any ledger entry relevant to the firing watcher(s) is `disputed`, the
+  Voice agent must mention the disagreement rather than pretend certainty.
 
-Output shape — locked, Person D renders it:
-```json
+PROMPT:
+```
+You are the night-watch assistant for Reid Library, a dragon shelter with
+damaged automation. A frightened dragon reads your output at 3am and decides
+whether to wake the elders.
+
+You will receive computed diagnostics and the current knowledge ledger. Do
+not calculate anything yourself; use the numbers exactly as given.
+
+DIAGNOSTICS
+{watcher_outputs_json}
+
+CURRENT KNOWLEDGE LEDGER (may include recently-reconciled new sources)
+{current_ledger_json}
+
+HISTORY
+Two past water faults escalated to total failure within 24 hours. Two past
+ventilation faults resolved on their own. Only four episodes exist, so
+confidence is inherently limited and you must say so.
+
+Return JSON only:
 {
-  "entry_cited": "Entry 1",
-  "mode": "plumbing" | "ventilation" | "stable",
-  "hours_to_failure_estimate": 6,
+  "entry_cited": "Entry 1" | "Entry 3" | ...,
   "subsystem_scope": "water" | "ventilation",
-  "recommended_action": "Shut the west valve manually before the gauge reads critical.",
-  "cloudy_quote": "Pressure's slid from 348 to 291 in six hours and the flow went with it. Same shape as always — don't wait for the valve to tell you.",
-  "confidence": "high" | "medium" | "low",
-  "caveats": null
+  "mode": "plumbing" | "ventilation" | "stable",
+  "headline": "under 8 words, plain language",
+  "recommended_action": "one sentence, what to do right now",
+  "reasoning": "2-3 sentences. Reference Cloudy's note in his voice. Use
+                consequences a dragon feels (cold, no water), not statistics.
+                If a relevant ledger entry is disputed, say so plainly.",
+  "predicted_to_escalate": true | false,
+  "escalation_basis": "the deterministic rule and historical rate that
+                        justify this, e.g. 'pressure has fallen 9 kPa/h for
+                        3 hours; this pattern preceded total failure in both
+                        past water faults'. null if not escalating.",
+  "hours_to_critical_estimate": number or null,
+  "speech_text": "one short sentence, written to be read aloud by
+                  text-to-speech. Plainer and shorter than reasoning. Only
+                  present if predicted_to_escalate is true.",
+  "confidence": "low" | "moderate" | "high",
+  "caveat": "one sentence naming the limitation honestly"
 }
+
+Never invent numbers. Never claim certainty about failure timing. Never state
+a percentage or probability of escalation — only the deterministic rule and
+the historical count (e.g. "2 of 2 past cases"), because the sample is too
+small to support a real probability. Never predict a brand-new fault starting
+— only whether an already-firing warning is likely to worsen.
 ```
 
-Mapping: Entry 1 or 2 firing -> mode "plumbing", subsystem_scope "water".
-Entry 3 firing -> mode "ventilation", subsystem_scope "ventilation".
-subsystem_scope carries real narrative weight: the shelter's two leaders are
-deadlocked between running everything manually and keeping everything automated.
-A scoped recommendation — shut the water, leave the fans running — dissolves that
-argument without us building a separate feature for it.
-
-For hours_to_failure_estimate, ground it in the lead-time analysis Person A is
-producing from the historical incidents rather than letting the model invent a
-number. Ask them for the figure and put it in the prompt as context.
+`subsystem_scope`/`mode` mapping: Entry 1 or 4 firing → "plumbing"/"water".
+Entry 3 firing → "ventilation"/"ventilation". This resolves the shelter's
+"two leaders" conflict for free — the recommendation is scoped to the sick
+subsystem only, never a blanket shutdown.
 
 === PART 3: /app/api/diagnose/route.ts ===
 ```
 GET ?ts=2026-07-05T06:00:00Z
--> watchers  = await checkAllWatchers(ts)
--> watchers  = detectConflicts(watchers)         // PART 4
+-> { watchers, listener_validation } = await checkAllWatchers(ts)
 -> severity  = aggregate(watchers)
--> diagnosis = severity === "green" ? null : await voice(watchers, notes)
--> sum token usage across every call this tick, estimate cost
+-> ledger    = readCurrentLedger()          // Person B's ledger file/endpoint
+-> diagnosis = severity === "green" ? null : await voice(watchers, ledger)
+-> sum token usage across the Voice call this tick, estimate cost
 -> write the full response to a local cache file keyed by timestamp
 ```
 
-Response shape — locked, Person D builds against it:
+RESPONSE SHAPE — locked, Person D builds against this:
 ```json
 {
   "severity": "amber",
-  "watchers": [ /* the five objects, passed through untouched */ ],
+  "watchers": [ /* 4 objects, passed through untouched */ ],
+  "listener_validation": { ... },
   "diagnosis": { /* voice output, or null when green */ },
-  "tokens_used": 1850,
-  "estimated_cost_usd": 0.0055
+  "ledger_snapshot": [ /* current ledger rows, read-only, for the ledger panel */ ],
+  "tokens_used": 850,
+  "estimated_cost_usd": 0.003
 }
 ```
 
-The cache is not optional — Person D falls back to it if a live call stalls on
-stage. Pre-warm it for these four demo timestamps before we present:
-2026-07-04T23:00, 2026-07-05T06:00, 2026-07-10T04:00, 2026-07-15T06:00.
+The cache is not optional — Person D falls back to it if a live call stalls
+on stage. Pre-warm it for these demo timestamps: 2026-07-04T23:00,
+2026-07-05T04:00, 2026-07-06T00:00, 2026-07-10T06:00.
 
-=== PART 4: CONFLICT DETECTION (third organizer hint) ===
-Context: the organizers say a newly powered-on section of the library may
-surface archived maintenance records, partial old sensor logs, and unfinished
-repair notes — and that this new information will sometimes contradict Cloudy's
-notes, the live sensors, or the young dragons' observations. During judging
-we'll be asked how our system handles disagreeing sources as new information
-keeps arriving.
-
-Right now there's only one evidence source ("sensor", from Person A/B), so there
-is nothing to conflict with yet. Build detectConflicts(watchers) as a pass-
-through function today: it takes the watcher array and returns it unchanged,
-BUT it must already be structured so that adding a second evidence source later
-(the archived-record data, once it exists) is a single new comparison step, not
-a rewrite. Specifically:
-
-```typescript
-function detectConflicts(watchers: Watcher[]): Watcher[] {
-  // Today: single source (sensor), nothing to compare against.
-  // Later: if an evidence item exists with source "archived_record" that
-  // contradicts a "sensor" evidence item for the same entry (e.g. opposite
-  // trend direction, or a note claiming a component was already replaced),
-  // set that watcher's conflict = true, conflict_note = a short description
-  // of the disagreement, and confidence = "medium" or "low".
-  return watchers;
-}
-```
-
-This is what lets us answer the judges honestly: "our pipeline already tags
-every piece of evidence with its source; conflict detection is a comparison
-step that runs before aggregation; when we get the archive data, plugging it in
-is additive, not a redesign." Practice saying that — it's the actual answer to
-their question.
-
-DELIVERABLE: aggregator with tests for all-quiet / one-watching / one-firing /
-multiple-firing, the fully written Voice prompt with at least one real call
-producing a convincing Cloudy quote, the working route returning the exact
-contract above, the four pre-warmed cache files, and the detectConflicts
-pass-through function ready to be extended.
+DELIVERABLE: aggregator with tests for all-quiet / one-watching / one-firing
+/ multiple-firing, the fully written Voice prompt with at least one real call
+producing a convincing Cloudy briefing that correctly honors the
+onset-vs-escalation honesty rules, the working /api/diagnose route returning
+the exact contract above, and the pre-warmed cache files.
