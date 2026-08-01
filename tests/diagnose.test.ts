@@ -242,7 +242,7 @@ describe("diagnose — the Voice call fails", () => {
    * stale or hand-edited cache file therefore ships an escalation the current
    * rules forbid — including speech_text, which is read aloud.
    */
-  it("currently serves a cached escalation on a tick where escalation is forbidden", async () => {
+  it("re-checks a cached escalation against the rules that apply NOW", async () => {
     await cache.writeCache(VENT_RED_TS, {
       severity: "red",
       watchers: [],
@@ -257,10 +257,16 @@ describe("diagnose — the Voice call fails", () => {
     voiceMock.mockRejectedValue(new Error("down"));
     const res = await diagnose(VENT_RED_TS);
 
-    expect(res.diagnosis?.predicted_to_escalate).toBe(true);
-    expect(res.diagnosis?.speech_text).toBeDefined();
-    expect(res.tokens_used).toBe(12345);
-    expect(res.estimated_cost_usd).toBe(1.23);
+    // A cache file is editable JSON that can predate a rule change. Entry 3 is
+    // what fires here, so the cached escalation must be stripped rather than
+    // replayed — and nothing may be read aloud.
+    expect(res.diagnosis?.predicted_to_escalate).toBe(false);
+    expect(res.diagnosis?.escalation_basis).toBeNull();
+    expect(res.diagnosis?.speech_text).toBeUndefined();
+    expect(res.warnings?.join(" ")).toMatch(/Cached briefing re-checked/);
+    // This tick made no model call, so it cost nothing.
+    expect(res.tokens_used).toBe(0);
+    expect(res.estimated_cost_usd).toBe(0);
   });
 });
 

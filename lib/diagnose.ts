@@ -4,7 +4,35 @@ import { estimateCostUsd } from "./cost";
 import { readCurrentLedgerChecked } from "./ledger";
 import type { DiagnoseResponse, LedgerEntry } from "./types";
 import { getWatchersChecked } from "./watchers";
-import { VOICE_MODEL, voice } from "./voice";
+import { VOICE_MODEL, enforceHonesty, voice } from "./voice";
+import type { Diagnosis, WatcherOutput } from "./types";
+
+/**
+ * Re-run the honesty guardrails over a diagnosis that came off disk.
+ *
+ * A cache file is just JSON on the filesystem: it can be stale, it can predate
+ * a rule change, and it can be hand-edited. Serving it unchecked would let a
+ * forbidden escalation — and the speech_text that gets read aloud with it —
+ * bypass every guardrail precisely on the path the demo depends on. The rules
+ * are cheap and deterministic, so we simply apply them again.
+ */
+export function revalidateCachedDiagnosis(
+  diagnosis: Diagnosis | null,
+  watchers: WatcherOutput[],
+  ledger: LedgerEntry[],
+): { diagnosis: Diagnosis | null; warnings: string[] } {
+  if (!diagnosis) return { diagnosis: null, warnings: [] };
+
+  const audit = enforceHonesty(
+    diagnosis as unknown as Record<string, unknown>,
+    watchers,
+    ledger,
+  );
+  return {
+    diagnosis: audit.diagnosis,
+    warnings: audit.warnings.map((w) => `Cached briefing re-checked: ${w}`),
+  };
+}
 
 /**
  * One tick of the diagnosis pipeline:
@@ -130,16 +158,25 @@ export async function diagnose(timestamp: string): Promise<DiagnoseResponse> {
     const message = err instanceof Error ? err.message : String(err);
 
     if (cached?.diagnosis) {
+      // The cached briefing was written under whatever rules applied then, so
+      // re-check it against the rules and the watchers that apply NOW.
+      const rechecked = revalidateCachedDiagnosis(cached.diagnosis, watchers, ledger);
       return {
         ...cached,
         severity,
         watchers,
         listener_validation,
+        diagnosis: rechecked.diagnosis,
         ledger_snapshot: ledger,
         served_from_cache: true,
+        // This tick made no model call, so it cost nothing. Reporting the
+        // cached tick's spend again would double-count it across the demo.
+        tokens_used: 0,
+        estimated_cost_usd: 0,
         warnings: [
           ...(cached.warnings ?? []),
           ...baseWarnings,
+          ...rechecked.warnings,
           `Live Voice call failed (${message}); diagnosis served from cache.`,
         ],
       };

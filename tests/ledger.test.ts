@@ -193,12 +193,15 @@ describe("isDisputed — tolerant in the SAFE direction only", () => {
    * The file's own comment says erring toward "this is disputed" is the safe
    * direction, so these are tolerance gaps in the UNSAFE direction.
    */
-  it("currently MISSES a stringly-typed dispute marker", () => {
-    expect(isDisputed({ disputed: "true" } as never)).toBe(false);
-    expect(isDisputed({ disputed: "yes" } as never)).toBe(false);
-    expect(isDisputed({ disputed: 1 } as never)).toBe(false);
-    expect(isDisputed({ status: "in dispute" } as never)).toBe(false);
-    expect(isDisputed({ status: "disagreement" } as never)).toBe(false);
+  it("catches a stringly-typed dispute marker", () => {
+    // A JSON producer writing "true" instead of true, or "in dispute" instead
+    // of "disputed", must not cause a disagreement to go unnoticed — that is
+    // the direction where the Voice agent claims unearned certainty.
+    expect(isDisputed({ disputed: "true" } as never)).toBe(true);
+    expect(isDisputed({ disputed: "yes" } as never)).toBe(true);
+    expect(isDisputed({ disputed: 1 } as never)).toBe(true);
+    expect(isDisputed({ status: "in dispute" } as never)).toBe(true);
+    expect(isDisputed({ status: "disagreement" } as never)).toBe(true);
   });
 
   it("never throws on a hostile row shape", () => {

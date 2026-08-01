@@ -199,18 +199,36 @@ export function relevantLedgerEntries(
  * earned. Erring toward "this is disputed" is the safe direction.
  */
 const DISPUTE_FIELDS = ["status", "state", "verification", "verdict", "confidence"];
-const DISPUTE_WORDS = /^(disputed|contested|conflicting|conflict|contradicted|unresolved)$/;
+const DISPUTE_WORDS = /(disput|disagree|contest|conflict|contradict|unresolved)/;
+/**
+ * "undisputed" / "indisputable" mean the opposite. The prefix only negates when
+ * stripping it leaves a dispute word — "unresolved" is itself a dispute marker,
+ * not a negation of "resolved".
+ */
+const NEGATED_STATUS = /^((un|in|ir|im|non)[-_]?(disput|contest|conflict|contradict)|not[\s_-])/;
 
 export function isDisputed(row: LedgerEntry): boolean {
   if (!row || typeof row !== "object") return false;
+
   for (const field of DISPUTE_FIELDS) {
     const value = row[field];
-    if (typeof value === "string" && DISPUTE_WORDS.test(value.trim().toLowerCase())) {
+    if (typeof value !== "string") continue;
+    const normalised = value.trim().toLowerCase();
+    // Substring rather than exact match, so "in dispute" and "disputed by log"
+    // are caught — a missed disagreement lets the Voice agent claim certainty.
+    if (DISPUTE_WORDS.test(normalised) && !NEGATED_STATUS.test(normalised)) {
       return true;
     }
   }
-  // Some ledgers carry an explicit boolean instead of a status string.
-  return row.disputed === true;
+
+  // Some ledgers carry an explicit flag instead of a status string. Accept the
+  // truthy spellings a JSON producer plausibly emits, not just a real boolean.
+  const flag = row.disputed;
+  if (flag === true || flag === 1) return true;
+  if (typeof flag === "string") {
+    return ["true", "yes", "y", "1"].includes(flag.trim().toLowerCase());
+  }
+  return false;
 }
 
 export function disputedLedgerEntries(

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { diagnose } from "@/lib/diagnose";
+import { diagnose, revalidateCachedDiagnosis } from "@/lib/diagnose";
 import { readCache } from "@/lib/cache";
 
 export const dynamic = "force-dynamic";
@@ -27,9 +27,12 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const ts = url.searchParams.get("ts") ?? new Date().toISOString();
 
-  if (Number.isNaN(Date.parse(ts))) {
+  // Date.parse alone accepts "0", "2026" and "Jul 5 2026", so a typo in the
+  // demo URL would silently diagnose a different hour instead of erroring.
+  const ISO_8601 = /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:?\d{2})?$/;
+  if (!ISO_8601.test(ts) || Number.isNaN(Date.parse(ts))) {
     return NextResponse.json(
-      { error: `Invalid ts parameter: ${ts}. Expected an ISO 8601 timestamp.` },
+      { error: `Invalid ts parameter: ${ts}. Expected an ISO 8601 timestamp, e.g. 2026-07-05T04:00:00Z.` },
       { status: 400 },
     );
   }
@@ -42,8 +45,25 @@ export async function GET(request: Request) {
         { status: 404 },
       );
     }
+    // A cache file is editable JSON on disk. Re-apply the guardrails against
+    // the watchers stored alongside it, so a stale or hand-edited briefing
+    // cannot smuggle a forbidden escalation onto the stage path.
+    const rechecked = revalidateCachedDiagnosis(
+      cached.diagnosis,
+      cached.watchers ?? [],
+      cached.ledger_snapshot ?? [],
+    );
     return NextResponse.json(
-      { ...cached, served_from_cache: true },
+      {
+        ...cached,
+        diagnosis: rechecked.diagnosis,
+        tokens_used: 0,
+        estimated_cost_usd: 0,
+        served_from_cache: true,
+        ...(cached.warnings || rechecked.warnings.length
+          ? { warnings: [...(cached.warnings ?? []), ...rechecked.warnings] }
+          : {}),
+      },
       { headers: { "cache-control": "no-store" } },
     );
   }

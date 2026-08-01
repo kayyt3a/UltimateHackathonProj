@@ -194,8 +194,12 @@ describe("writeCache — a cache failure must never fail a good diagnosis", () =
    * through the HTTP contract today, but `diagnose()` is exported and called
    * directly by scripts/prewarm.ts.
    */
-  it("currently REJECTS on an unparseable timestamp instead of returning false", async () => {
-    await expect(cache.writeCache("not-a-timestamp", RESPONSE)).rejects.toThrow(RangeError);
+  it("returns false on an unparseable timestamp instead of throwing", async () => {
+    // scripts/prewarm.ts calls writeCache directly, so a bad timestamp must
+    // degrade to "not cached", not take the whole pre-warm run down.
+    await expect(
+      cache.writeCache("not-a-timestamp", RESPONSE),
+    ).resolves.toBe(false);
   });
 });
 

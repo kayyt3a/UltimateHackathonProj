@@ -383,7 +383,14 @@ const PROBABILITY_WORDS: Array<[RegExp, string]> = [
   [/\bprobabilit(y|ies)\b/i, "the word 'probability'"],
   [/\bodds\b/i, "the word 'odds'"],
   [/\blikelihood\b/i, "the word 'likelihood'"],
-  [/\b(chance|chances)\s+(of|that|it|the)\b/i, "a stated chance"],
+  [/\b(chance|chances)\s+(of|that|it|the|is|are|was|seems?)\b/i, "a stated chance"],
+  [/\bprobabl[ye]\b/i, "the word 'probable/probably'"],
+  [/\bmost likely\b/i, "a stated likelihood"],
+  // "8 in 10 water faults" — a rate we do not have. "2 of 2" stays permitted.
+  [/\b\d+\s+in\s+\d+\b/, "an invented rate"],
+  // Spelled-out ratios evade the digit patterns entirely.
+  [/\b(chances?|odds)\s+in\s+\w+/i, "an invented rate"],
+  [/\b\w+[-\s]in[-\s]\w+\s+(shot|odds|chance)\b/i, "an invented rate"],
   [/\b\d{1,3}(\.\d+)?\s*(%|percent)\s+(chance|probability|likely|risk)\b/i, "a percentage chance"],
 ];
 

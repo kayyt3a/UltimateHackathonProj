@@ -461,10 +461,9 @@ describe("ADVERSARIAL — smuggling a probability past the scanner", () => {
   });
 
   /**
-   * KNOWN SCANNER GAPS — see report item (b). These are recorded as
-   * characterisation so a future tightening of the regexes shows up here as a
-   * deliberate change rather than a surprise. Each one is a fabricated
-   * likelihood that currently reaches the dragon unflagged.
+   * Fabricated likelihoods that evade the obvious "%" check. Every one of
+   * these is a probability the four-episode record cannot support, so each
+   * must be flagged rather than reaching the dragon.
    */
   it.each([
     "It is probable the tanks run dry before dawn.",
@@ -473,8 +472,8 @@ describe("ADVERSARIAL — smuggling a probability past the scanner", () => {
     "The chance is high, so wake the elders.",
     "A one-in-three shot at survival.",
     "Most likely the tanks empty tonight.",
-  ])("currently MISSES the smuggled likelihood %j", (sentence) => {
-    expect(scanForProbabilityClaims("reasoning", sentence)).toEqual([]);
+  ])("catches the smuggled likelihood %j", (sentence) => {
+    expect(scanForProbabilityClaims("reasoning", sentence).length).toBeGreaterThan(0);
   });
 });
 

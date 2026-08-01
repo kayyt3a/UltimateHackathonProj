@@ -39,7 +39,15 @@ export async function writeCache(
   timestamp: string,
   response: DiagnoseResponse,
 ): Promise<boolean> {
-  const file = cachePath(timestamp);
+  // cachePath throws on an unparseable timestamp, but this function promises to
+  // return false rather than throw — scripts/prewarm.ts calls it directly.
+  let file: string;
+  try {
+    file = cachePath(timestamp);
+  } catch (err) {
+    console.warn(`[cache] invalid timestamp ${timestamp}:`, err);
+    return false;
+  }
   // Never persist the cache-fallback marker — a cached tick is a fresh tick.
   const { served_from_cache: _ignored, ...payload } = response;
   const tmp = `${file}.${process.pid}.${Date.now()}.${(tmpSequence += 1)}.tmp`;

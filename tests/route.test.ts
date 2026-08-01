@@ -19,9 +19,9 @@ process.env.DIAGNOSE_CACHE_DIR = CACHE_DIR;
 
 const { diagnoseMock } = vi.hoisted(() => ({ diagnoseMock: vi.fn() }));
 
-vi.mock("@/lib/diagnose", () => ({
+vi.mock("@/lib/diagnose", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/diagnose")>()),
   diagnose: diagnoseMock,
-  VOICE_MODEL: "claude-sonnet-5",
 }));
 
 const { GET } = await import("@/app/api/diagnose/route");
@@ -142,12 +142,15 @@ describe("GET /api/diagnose — a malformed ts is a 400, never a fake diagnosis"
    * instants (2000-01-01, 2026-01-01, local-midnight 2026-07-05). A typo in the
    * demo URL therefore silently diagnoses a DIFFERENT hour rather than 400ing.
    */
-  it("currently accepts loose, non-ISO date spellings", async () => {
+  it("rejects loose, non-ISO date spellings instead of diagnosing another hour", async () => {
+    // Date.parse alone accepts all of these: "0" becomes 2000-01-01 and
+    // "2026-07-05" becomes midnight. A typo in the demo URL must 400, not
+    // silently return a confident briefing about a completely different hour.
     for (const ts of ["0", "2026", "Jul 5 2026", "2026-07-05"]) {
       diagnoseMock.mockClear();
       const res = await GET(req(`?ts=${encodeURIComponent(ts)}`));
-      expect(res.status, ts).toBe(200);
-      expect(diagnoseMock, ts).toHaveBeenCalledWith(ts);
+      expect(res.status, ts).toBe(400);
+      expect(diagnoseMock, ts).not.toHaveBeenCalled();
     }
   });
 
@@ -166,8 +169,13 @@ describe("GET /api/diagnose?cache=only — the on-stage escape hatch", () => {
     expect(res.status).toBe(200);
     expect(res.headers.get("cache-control")).toBe("no-store");
     const body = await res.json();
-    expect(body).toMatchObject(RESPONSE);
+    const { tokens_used: _t, estimated_cost_usd: _c, ...rest } = RESPONSE;
+    expect(body).toMatchObject(rest);
     expect(body.served_from_cache).toBe(true);
+    // Serving a file costs nothing; re-reporting the cached tick's spend would
+    // double-count it every time the escape hatch is used on stage.
+    expect(body.tokens_used).toBe(0);
+    expect(body.estimated_cost_usd).toBe(0);
     expect(diagnoseMock).not.toHaveBeenCalled();
   });
 
