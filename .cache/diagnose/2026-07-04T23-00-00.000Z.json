@@ -6,34 +6,34 @@
       "status": "quiet",
       "subsystem": "water",
       "evidence": [],
-      "reasoning": "Pressure slope is -0.4 kPa/h, well inside the -5 threshold."
+      "reasoning": "Pressure slope is +0.51 kPa/h; pressure steady at 343.9 kPa."
     },
     {
       "entry": "Entry 3",
       "status": "quiet",
       "subsystem": "ventilation",
       "evidence": [],
-      "reasoning": "East vent airflow steady at 94% of nominal."
+      "reasoning": "Airflow residual 0.0003, well inside the -0.5006 fault threshold."
     },
     {
       "entry": "Entry 4",
       "status": "quiet",
-      "subsystem": "water",
+      "subsystem": null,
       "evidence": [],
-      "reasoning": "Refill cycles averaging 61 minutes; no short-cycling."
+      "reasoning": "No rule: 'cold arrives later' was refuted — temperature and airflow drop in the same hour, not lagged."
     },
     {
       "entry": "Entry 5",
       "status": "quiet",
       "subsystem": null,
       "evidence": [],
-      "reasoning": "No cross-subsystem correlation above threshold."
+      "reasoning": "No rule: 'missing pieces' was unsupported — the 6 gaps scatter across the month with no clustering near incidents."
     }
   ],
   "listener_validation": {
     "entry": "Entry 2",
     "accuracy_vs_system_status": 1,
-    "note": "The young dragons' ears are exactly as accurate as the sensors."
+    "note": "The young dragons' ears are exactly as accurate as the sensors — the rattle carries no information the sensors lack."
   },
   "diagnosis": null,
   "ledger_snapshot": [
@@ -41,46 +41,61 @@
       "id": "L-001",
       "entry": "Entry 1",
       "subsystem": "water",
-      "claim": "A pressure slope steeper than -5 kPa/h sustained for 3 hours has preceded total water failure in every recorded case.",
+      "claim": "Note 1 — 'the pipes complain first'. A pressure slope steeper than -5 kPa/h sustained for 3 hours precedes total water failure.",
       "status": "confirmed",
-      "source": "Cloudy's note, reconciled against sensor log 2026-06-30",
-      "updated_at": "2026-07-01T09:00:00Z"
+      "verdict": "supported",
+      "source": "Person A, Figure 6: pressure_slope_6h separates escalating from resolving episodes by ~hour 4 of warning. Both recorded water episodes escalated.",
+      "updated_at": "2026-08-01T05:56:00Z"
     },
     {
       "id": "L-002",
       "entry": "Entry 2",
       "subsystem": null,
-      "claim": "The young dragons' ears track system_status as accurately as the sensors do.",
+      "claim": "Note 2 — 'the library has a rhythm'. The young dragons' ears track system_status as accurately as the sensors do.",
       "status": "confirmed",
-      "source": "Listener validation, accuracy 1.0 vs system_status",
-      "updated_at": "2026-07-02T11:30:00Z"
+      "verdict": "redundant",
+      "source": "Person A, Figure 4: sound_event maps 1:1 onto system_status with zero off-diagonal. True, but it carries no information the sensors lack — which is why it is shown in its own panel and never enters the severity calculation.",
+      "updated_at": "2026-08-01T05:56:00Z"
     },
     {
       "id": "L-003",
       "entry": "Entry 3",
       "subsystem": "ventilation",
-      "claim": "The east vent rattle means the fan bearing is about to seize.",
-      "status": "disputed",
-      "source": "Cloudy's note vs. maintenance log 2026-07-08 — the log records the rattle as a loose grille cover, replaced twice with no bearing fault.",
-      "updated_at": "2026-07-09T16:45:00Z"
+      "claim": "Note 3 — 'fans running in circles'. The fans can turn at full power while moving no air.",
+      "status": "confirmed",
+      "verdict": "supported",
+      "source": "Person A, Figure 3: airflow = 0.1250 x power - 1.5000, r2 = 0.999999. A residual below -0.5006 means the fans are spinning without moving air.",
+      "updated_at": "2026-08-01T05:56:00Z"
     },
     {
       "id": "L-004",
       "entry": "Entry 4",
-      "subsystem": "water",
-      "claim": "Tank refill cycles shorter than 40 minutes indicate a leak downstream of the main valve.",
-      "status": "unverified",
-      "source": "Cloudy's note; no reconciled sensor evidence yet",
-      "updated_at": "2026-07-01T09:00:00Z"
+      "subsystem": "ventilation",
+      "claim": "Note 4 — 'cold arrives later'. Temperature is supposed to drop some hours after airflow does, giving early warning.",
+      "status": "disputed",
+      "verdict": "refuted",
+      "source": "Person A: temperature and airflow drop in the SAME hour, not lagged. Cloudy's note is wrong on this one — there is no head start to be had from watching the cold.",
+      "updated_at": "2026-08-01T05:56:00Z"
     },
     {
       "id": "L-005",
       "entry": "Entry 5",
       "subsystem": null,
-      "claim": "Two past ventilation faults resolved on their own within 12 hours; two past water faults did not.",
+      "claim": "Note 5 — 'missing pieces'. Gaps in the sensor record cluster around incidents.",
+      "status": "unverified",
+      "verdict": "unsupported",
+      "source": "Person A, Figure 7: the 6 gaps scatter across the month with no clustering near incidents. Not enough evidence either way — treated as no rule rather than a refutation.",
+      "updated_at": "2026-08-01T05:56:00Z"
+    },
+    {
+      "id": "L-006",
+      "entry": null,
+      "subsystem": null,
+      "claim": "Onset is not forecastable. A brand-new fault starting cannot be predicted from the sensors.",
       "status": "confirmed",
-      "source": "Episode history, all four recorded episodes",
-      "updated_at": "2026-07-03T08:15:00Z"
+      "verdict": "supported",
+      "source": "Person A, Figure 5: the t+6h classifier reaches 88.5% accuracy but catches 0 of 24 true onset-precursor rows — the accuracy is pure persistence.",
+      "updated_at": "2026-08-01T05:56:00Z"
     }
   ],
   "tokens_used": 0,

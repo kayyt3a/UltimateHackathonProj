@@ -76,8 +76,10 @@ export async function readCache(
 }
 
 export const DEMO_TIMESTAMPS = [
-  "2026-07-04T23:00:00Z",
-  "2026-07-05T04:00:00Z",
-  "2026-07-06T00:00:00Z",
-  "2026-07-10T06:00:00Z",
+  // Every one of these is a real hour from Person A's prepared_data.json.
+  "2026-07-04T23:00:00Z", // green  — one hour before the water episode begins
+  "2026-07-05T04:00:00Z", // amber  — slope past -5 but not yet sustained 3h
+  "2026-07-05T06:00:00Z", // red    — sustained; escalation ALLOWED, still only "warning"
+  "2026-07-06T00:00:00Z", // red    — water has already failed (67.6 kPa)
+  "2026-07-10T06:00:00Z", // red    — ventilation; escalation must be REFUSED
 ] as const;

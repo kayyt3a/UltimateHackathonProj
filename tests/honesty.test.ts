@@ -21,8 +21,8 @@ const escalatingModelOutput = {
     "Cloudy wrote that when the pressure keeps sliding, the tanks run dry before morning. You will be thirsty and the pools will be cold.",
   predicted_to_escalate: true,
   escalation_basis:
-    "pressure has been falling at 9.4 kPa/h; this pattern preceded total failure in 2 of 2 past water faults",
-  hours_to_critical_estimate: 24,
+    "pressure has been falling at 10.17 kPa/h; this pattern preceded total failure in 2 of 2 past water faults",
+  hours_to_critical_estimate: 8,
   speech_text: "Water pressure is dropping fast. Wake the elders.",
   confidence: "moderate",
   caveat: "Only four episodes exist, so this is a pattern, not a promise.",
@@ -34,7 +34,7 @@ describe("escalation rule — onset vs escalation", () => {
     expect(ruling.allowed).toBe(true);
     expect(ruling.sourceEntry).toBe("Entry 1");
     expect(ruling.permittedBasis).toMatch(/2 of 2 past water faults/);
-    expect(ruling.permittedBasis).toMatch(/9\.4 kPa\/h/);
+    expect(ruling.permittedBasis).toMatch(/10\.17 kPa\/h/);
   });
 
   it("FORBIDS escalation when only ventilation is firing", () => {
@@ -44,7 +44,7 @@ describe("escalation rule — onset vs escalation", () => {
   });
 
   it("FORBIDS escalation when nothing is firing (green->amber onset)", () => {
-    expect(rulePredictedEscalation(FIXTURES.VENT_WATCHING.watchers).allowed).toBe(false);
+    expect(rulePredictedEscalation(FIXTURES.WATER_WATCHING.watchers).allowed).toBe(false);
     expect(rulePredictedEscalation(FIXTURES.ALL_QUIET.watchers).allowed).toBe(false);
   });
 
@@ -93,9 +93,11 @@ describe("scope rule — never a blanket shutdown", () => {
   });
 
   it("falls back to a watching entry when nothing is firing", () => {
-    expect(ruleScope(FIXTURES.VENT_WATCHING.watchers)).toMatchObject({
-      subsystem_scope: "ventilation",
-      mode: "ventilation",
+    // 2026-07-05T04:00Z: Entry 1 is watching on water, nothing is firing.
+    expect(ruleScope(FIXTURES.WATER_WATCHING.watchers)).toMatchObject({
+      subsystem_scope: "water",
+      mode: "plumbing",
+      entry_cited: "Entry 1",
     });
   });
 });
@@ -110,7 +112,7 @@ describe("enforceHonesty — the model explains WHY, code decides what it may cl
     expect(warnings).toEqual([]);
     expect(diagnosis.predicted_to_escalate).toBe(true);
     expect(diagnosis.speech_text).toBe("Water pressure is dropping fast. Wake the elders.");
-    expect(diagnosis.hours_to_critical_estimate).toBe(24);
+    expect(diagnosis.hours_to_critical_estimate).toBe(8);
   });
 
   it("overrules a predicted escalation on a ventilation fault", () => {
@@ -129,7 +131,7 @@ describe("enforceHonesty — the model explains WHY, code decides what it may cl
   it("refuses to predict a brand-new fault starting when nothing is firing", () => {
     const { diagnosis, warnings } = enforceHonesty(
       { ...escalatingModelOutput },
-      FIXTURES.VENT_WATCHING.watchers,
+      FIXTURES.WATER_WATCHING.watchers,
       ledger,
     );
     expect(diagnosis.predicted_to_escalate).toBe(false);
@@ -223,7 +225,7 @@ describe("enforceHonesty — the model explains WHY, code decides what it may cl
 describe("ledger", () => {
   it("finds the disputed ventilation row when ventilation is active", () => {
     const disputed = disputedLedgerEntries(FIXTURES.VENT_FIRING.watchers, ledger);
-    expect(disputed.map((d) => d.id)).toEqual(["L-003"]);
+    expect(disputed.map((d) => d.id)).toEqual(["L-004"]);
   });
 
   it("ignores the disputed ventilation row when only water is active", () => {
@@ -253,7 +255,7 @@ describe("buildVoicePrompt", () => {
   });
 
   it("names the disputed ledger entry when one is relevant", () => {
-    expect(buildVoicePrompt(FIXTURES.VENT_FIRING, ledger)).toMatch(/DISPUTED \(L-003\)/);
+    expect(buildVoicePrompt(FIXTURES.VENT_FIRING, ledger)).toMatch(/DISPUTED \(L-004\)/);
   });
 
   it("includes the four-episode history and the listener_validation note", () => {

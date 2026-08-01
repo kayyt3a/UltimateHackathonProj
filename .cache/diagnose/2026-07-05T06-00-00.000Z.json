@@ -3,30 +3,30 @@
   "watchers": [
     {
       "entry": "Entry 1",
-      "status": "quiet",
+      "status": "firing",
       "subsystem": "water",
-      "evidence": [],
-      "reasoning": "Pressure slope is -3.83 kPa/h, inside the -5 threshold; water is healthy."
+      "evidence": [
+        {
+          "hour": "2026-07-05T06:00:00Z",
+          "signal": "pressure_slope_6h",
+          "value": -10.17,
+          "threshold": -5
+        },
+        {
+          "hour": "2026-07-05T06:00:00Z",
+          "signal": "water_pressure_kpa",
+          "value": 291.35,
+          "threshold": 350.41
+        }
+      ],
+      "reasoning": "Pressure has fallen at 10.17 kPa/h for 3 consecutive hours and is down to 291.4 kPa from a 350.4 kPa baseline."
     },
     {
       "entry": "Entry 3",
-      "status": "firing",
+      "status": "quiet",
       "subsystem": "ventilation",
-      "evidence": [
-        {
-          "hour": "2026-07-10T06:00:00Z",
-          "signal": "airflow_residual",
-          "value": -1,
-          "threshold": -0.5006
-        },
-        {
-          "hour": "2026-07-10T06:00:00Z",
-          "signal": "airflow_m3s",
-          "value": 3.74,
-          "threshold": 4.67
-        }
-      ],
-      "reasoning": "Airflow is 1.0 m3/s below what the fan power predicts (airflow = 0.125 x power - 1.5, r2 = 0.999999). The fans are turning without moving air."
+      "evidence": [],
+      "reasoning": "Airflow residual near zero; ventilation is healthy."
     },
     {
       "entry": "Entry 4",
@@ -114,6 +114,6 @@
   "tokens_used": 0,
   "estimated_cost_usd": 0,
   "warnings": [
-    "Live Voice call failed (Could not resolve authentication method. Expected one of apiKey, authToken, credentials, config, or profile to be set. Or for one of the \"X-Api-Key\" or \"Authorization\" headers to be explicitly omitted) and no cached diagnosis exists for 2026-07-10T06:00:00Z. Severity is still valid — it is computed by code, not the model."
+    "Live Voice call failed (Could not resolve authentication method. Expected one of apiKey, authToken, credentials, config, or profile to be set. Or for one of the \"X-Api-Key\" or \"Authorization\" headers to be explicitly omitted) and no cached diagnosis exists for 2026-07-05T06:00:00Z. Severity is still valid — it is computed by code, not the model."
   ]
 }

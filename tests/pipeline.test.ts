@@ -14,8 +14,9 @@ import { readCurrentLedger } from "@/lib/ledger";
 describe("watcher lookup -> severity, per demo timestamp", () => {
   const expected: Record<string, string> = {
     "2026-07-04T23:00:00Z": "green",
-    "2026-07-05T04:00:00Z": "red",
-    "2026-07-06T00:00:00Z": "amber",
+    "2026-07-05T04:00:00Z": "amber",
+    "2026-07-05T06:00:00Z": "red",
+    "2026-07-06T00:00:00Z": "red",
     "2026-07-10T06:00:00Z": "red",
   };
 
@@ -28,9 +29,9 @@ describe("watcher lookup -> severity, per demo timestamp", () => {
 
   it("is insensitive to equivalent timestamp spellings", async () => {
     for (const spelling of [
-      "2026-07-05T04:00:00Z",
-      "2026-07-05T04:00:00.000Z",
-      "2026-07-05T04:00Z",
+      "2026-07-05T06:00:00Z",
+      "2026-07-05T06:00:00.000Z",
+      "2026-07-05T06:00Z",
     ]) {
       const { watchers } = await getWatchers(spelling);
       expect(aggregate(watchers), spelling).toBe("red");

@@ -15,8 +15,8 @@ const base = {
   reasoning: "Cloudy wrote that when the pressure slides, the tanks run dry before morning.",
   predicted_to_escalate: true,
   escalation_basis:
-    "pressure has been falling at 9.4 kPa/h; this pattern preceded total failure in 2 of 2 past water faults",
-  hours_to_critical_estimate: 24,
+    "pressure has been falling at 10.17 kPa/h; this pattern preceded total failure in 2 of 2 past water faults",
+  hours_to_critical_estimate: 8,
   speech_text: "Water pressure is dropping fast. Wake the elders.",
   confidence: "moderate",
   caveat: "Only four episodes exist, so this is a pattern, not a promise.",
@@ -77,7 +77,7 @@ describe("hard vs soft honesty violations", () => {
     // every single ventilation briefing.
     for (const reasoning of [
       "Airflow is at 62% of nominal and the rattle is at 58 dB, exactly what Cloudy described.",
-      "Pressure has fallen 9.4 kPa/h for three hours; the tanks are down to 30% and you will be thirsty.",
+      "Pressure has fallen 10.17 kPa/h for three hours; the tanks are down to 30% and you will be thirsty.",
       "The vent is running at 94 percent of nominal, so the cold you feel is not the fans.",
     ]) {
       const audit = enforceHonesty({ ...base, reasoning }, FIXTURES.WATER_FIRING.watchers, ledger);

@@ -205,7 +205,7 @@ describe("writeCache — a cache failure must never fail a good diagnosis", () =
 
 describe("DEMO_TIMESTAMPS", () => {
   it("are all valid, canonical, UTC instants", () => {
-    expect(cache.DEMO_TIMESTAMPS).toHaveLength(4);
+    expect(cache.DEMO_TIMESTAMPS).toHaveLength(5);
     for (const ts of cache.DEMO_TIMESTAMPS) {
       expect(Number.isNaN(Date.parse(ts)), ts).toBe(false);
       expect(ts, ts).toMatch(/Z$/);

@@ -116,7 +116,7 @@ describe("readCurrentLedger — malformed input degrades to an empty ledger", ()
     delete process.env.KNOWLEDGE_LEDGER_PATH;
     delete process.env.KNOWLEDGE_LEDGER_URL;
     const ledger = await readCurrentLedger();
-    expect(ledger.some((r) => r.id === "L-003" && r.status === "disputed")).toBe(true);
+    expect(ledger.some((r) => r.id === "L-004" && r.status === "disputed")).toBe(true);
   });
 });
 

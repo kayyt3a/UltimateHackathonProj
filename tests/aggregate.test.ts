@@ -73,12 +73,12 @@ describe("aggregate — against the demo fixtures", () => {
     expect(aggregate(FIXTURES.ALL_QUIET.watchers)).toBe("green");
   });
 
-  it("2026-07-05T04:00 Entry 1 firing on water -> red", () => {
+  it("2026-07-05T06:00 Entry 1 firing on water (sustained) -> red", () => {
     expect(aggregate(FIXTURES.WATER_FIRING.watchers)).toBe("red");
   });
 
-  it("2026-07-06T00:00 Entry 3 watching -> amber", () => {
-    expect(aggregate(FIXTURES.VENT_WATCHING.watchers)).toBe("amber");
+  it("2026-07-05T04:00 Entry 1 watching on water (not yet sustained) -> amber", () => {
+    expect(aggregate(FIXTURES.WATER_WATCHING.watchers)).toBe("amber");
   });
 
   it("2026-07-10T06:00 Entry 3 firing -> red", () => {

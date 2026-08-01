@@ -11,7 +11,7 @@ import {
   rulePredictedEscalation,
   ruleScope,
 } from "./escalation";
-import { EPISODES, TOTAL_EPISODES, waterEscalationPhrase } from "./analysis";
+import { ESCALATION_RULE, TOTAL_EPISODES, waterEscalationPhrase } from "./analysis";
 
 /** Used when a caveat has to be rewritten and nothing safe survives. */
 const FALLBACK_CAVEAT = `Only ${TOTAL_EPISODES} past episodes exist, so this is a pattern, not a promise.`;
@@ -520,14 +520,14 @@ export function enforceHonesty(
     // model does not get to pick it. There is no deterministic model of time-to-
     // failure — only the observed fact that both past water faults reached
     // failure within this window. We report that bound instead of a forecast.
-    const historicalWindow = EPISODES.water.windowHours;
-    if (diagnosis.hours_to_critical_estimate !== historicalWindow) {
+    const measuredLeadTime = ESCALATION_RULE.leadTimeHours;
+    if (diagnosis.hours_to_critical_estimate !== measuredLeadTime) {
       if (diagnosis.hours_to_critical_estimate !== null) {
         warnings.push(
-          `Voice agent estimated ${diagnosis.hours_to_critical_estimate}h to critical; replaced with the ${historicalWindow}h historical window, which is the only figure the record supports.`,
+          `Voice agent estimated ${diagnosis.hours_to_critical_estimate}h to critical; replaced with Person A's measured ${measuredLeadTime}h warning-to-failure lead time, the only figure the record supports.`,
         );
       }
-      diagnosis.hours_to_critical_estimate = historicalWindow;
+      diagnosis.hours_to_critical_estimate = measuredLeadTime;
     }
     const speech =
       typeof raw.speech_text === "string" ? raw.speech_text.trim() : "";

@@ -41,8 +41,8 @@ const { diagnose } = await import("@/lib/diagnose");
 const cache = await import("@/lib/cache");
 
 const GREEN_TS = "2026-07-04T23:00:00Z";
-const WATER_RED_TS = "2026-07-05T04:00:00Z";
-const AMBER_TS = "2026-07-06T00:00:00Z";
+const WATER_RED_TS = "2026-07-05T06:00:00Z";
+const AMBER_TS = "2026-07-05T04:00:00Z";
 const VENT_RED_TS = "2026-07-10T06:00:00Z";
 
 /** Frozen inside the introductory-pricing window so cost never drifts. */
@@ -57,7 +57,7 @@ const DIAGNOSIS: Diagnosis = {
   reasoning: "Cloudy wrote about this exact slide.",
   predicted_to_escalate: true,
   escalation_basis: "…preceded total failure in 2 of 2 past water faults",
-  hours_to_critical_estimate: 24,
+  hours_to_critical_estimate: 8,
   speech_text: "Water pressure is dropping fast. Wake the elders.",
   confidence: "moderate",
   caveat: "Only four episodes exist.",

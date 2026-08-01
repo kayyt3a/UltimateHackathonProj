@@ -33,8 +33,8 @@ const CLEAN = {
     "Cloudy wrote that when the pressure keeps sliding, the tanks run dry before morning. You will be thirsty and the pools will be cold.",
   predicted_to_escalate: true,
   escalation_basis:
-    "pressure has been falling at 9.4 kPa/h; this pattern preceded total failure in 2 of 2 past water faults",
-  hours_to_critical_estimate: 24,
+    "pressure has been falling at 10.17 kPa/h; this pattern preceded total failure in 2 of 2 past water faults",
+  hours_to_critical_estimate: 8,
   speech_text: "Water pressure is dropping fast. Wake the elders.",
   confidence: "moderate",
   caveat: "Only four episodes exist, so this is a pattern, not a promise.",

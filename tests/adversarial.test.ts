@@ -270,7 +270,7 @@ describe("ADVERSARIAL — enforceHonesty against malformed model output", () => 
       { __proto__: { predicted_to_escalate: true } } as Record<string, unknown>,
     ];
     for (const raw of hostile) {
-      for (const fixture of [FIXTURES.WATER_FIRING, FIXTURES.VENT_FIRING, FIXTURES.VENT_WATCHING]) {
+      for (const fixture of [FIXTURES.WATER_FIRING, FIXTURES.VENT_FIRING, FIXTURES.WATER_WATCHING]) {
         expect(
           () => enforceHonesty(raw, fixture.watchers, ledger),
           JSON.stringify(raw),
@@ -315,7 +315,7 @@ describe("ADVERSARIAL — enforceHonesty against malformed model output", () => 
   });
 
   it("speech_text is dropped for EVERY non-escalating watcher configuration", () => {
-    for (const fixture of [FIXTURES.ALL_QUIET, FIXTURES.VENT_WATCHING, FIXTURES.VENT_FIRING]) {
+    for (const fixture of [FIXTURES.ALL_QUIET, FIXTURES.WATER_WATCHING, FIXTURES.VENT_FIRING]) {
       const { diagnosis, warnings } = enforceHonesty(
         { ...ESCALATING },
         fixture.watchers,
@@ -346,7 +346,7 @@ describe("ADVERSARIAL — enforceHonesty against malformed model output", () => 
    * and absurd magnitudes. "Never invent failure timing" is only enforced by
    * the escalation gate, not by a range check.
    */
-  it("replaces ANY model-chosen hours_to_critical_estimate with the historical window", () => {
+  it("replaces ANY model-chosen hours_to_critical_estimate with the measured lead time", () => {
     // "How long do I have" is the number a frightened dragon acts on, so the
     // model does not get to pick it — absurd values and plausible ones alike
     // are replaced with the only figure the record supports.
@@ -356,8 +356,8 @@ describe("ADVERSARIAL — enforceHonesty against malformed model output", () => 
         FIXTURES.WATER_FIRING.watchers,
         ledger,
       );
-      expect(diagnosis.hours_to_critical_estimate, String(hours)).toBe(24);
-      expect(warnings.join(" "), String(hours)).toMatch(/historical window/);
+      expect(diagnosis.hours_to_critical_estimate, String(hours)).toBe(8);
+      expect(warnings.join(" "), String(hours)).toMatch(/lead time/);
     }
   });
 
@@ -482,7 +482,7 @@ describe("ADVERSARIAL — buildVoicePrompt never hands the model a number to par
     for (const fixture of [
       FIXTURES.WATER_FIRING,
       FIXTURES.VENT_FIRING,
-      FIXTURES.VENT_WATCHING,
+      FIXTURES.WATER_WATCHING,
       FIXTURES.ALL_QUIET,
     ]) {
       const prompt = buildVoicePrompt(fixture, ledger);
@@ -493,7 +493,7 @@ describe("ADVERSARIAL — buildVoicePrompt never hands the model a number to par
   });
 
   it("never tells the model escalation is ALLOWED unless the code rule says so", () => {
-    for (const fixture of [FIXTURES.VENT_FIRING, FIXTURES.VENT_WATCHING, FIXTURES.ALL_QUIET]) {
+    for (const fixture of [FIXTURES.VENT_FIRING, FIXTURES.WATER_WATCHING, FIXTURES.ALL_QUIET]) {
       const prompt = buildVoicePrompt(fixture, ledger);
       expect(prompt).toMatch(/Escalation: NOT ALLOWED/);
       expect(prompt).toMatch(/MUST set predicted_to_escalate=false/);
