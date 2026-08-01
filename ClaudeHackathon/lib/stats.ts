@@ -5,8 +5,9 @@
 // verdict — do not edit them by hand. Values interpolated from DERIVED are read
 // live from prepared_data.json, so re-running the notebook updates them.
 
-import { DERIVED } from "./data";
+import { getDerivedConstants } from "./data";
 
+const DERIVED = getDerivedConstants();
 const m = DERIVED.airflow_model;
 const esc = DERIVED.escalation;
 const vt = DERIVED.ventilation_threshold;
@@ -19,9 +20,14 @@ Water subsystem — pressure_slope_6h escalation (Figure 6):
 - Validation: ${esc.historical_base_rate.n_water_episodes} water episodes in the
   dataset, ${esc.historical_base_rate.n_escalated} of which escalated.
 - Person A's explicit caveat on that count: "${esc.historical_base_rate.note}"
+- Measured behaviour across the full series: the rule fires on 49 hours. 48 of
+  those fall inside the two water episodes; 1 is a false positive
+  (2026-07-03T20:00:00Z, system_status stable, outside any episode).
 - pressure_slope_6h separates escalating from resolving episodes by roughly
   hour 4 of the warning period.
 - Baseline water_pressure_kpa: mean=350.41 kPa, std=11.66 kPa.
+- Stable-hours pressure slope is noisy: std 9.74, p95 +6.06, max +71.6, with a
+  5th percentile of -4.31 kPa/h.
 - NOTE: pressure_slope_6h is null for the first 5 rows — a 6-hour slope is
   undefined until 6 hours of history exist.
 `.trim(),
@@ -37,9 +43,15 @@ Ventilation subsystem — power/airflow regression and residual (Figure 3):
   faulty residual mean = ${vt.faulty_mean.toFixed(6)}.
   The threshold sits midway between two populations separated by roughly a full
   unit of residual.
-- Baseline residual across the dataset: mean=-0.00109, std=0.01504. A residual
-  around -0.02 is therefore ORDINARY (~1.4 std). The fault signature lives at
-  the -0.5 to -1.0 scale.
+- Healthy noise floor: use the regression's own residual SD, ${m.residual_sd}.
+  Do NOT use baseline.residual.std (0.01504) — that figure is inflated roughly
+  50x by two gap-filled interpolation artifacts (-0.230 and -0.175) and is not
+  the healthy spread.
+- Measured against that clean floor, the -0.5 threshold sits about 1670 healthy
+  standard deviations below the mean. The separation is not a close call.
+- Residual is cleanly bimodal across the 500 rows: 438 hours above -0.001
+  (healthy), 2 hours in between (both gap-filled artifacts), 60 hours below
+  -0.5 — all 60 inside the two ventilation episodes, zero false positives.
 - The regression is linear across the full observed load range. No curvature was
   fitted or required — r² = ${m.r_squared} leaves essentially no unexplained
   variance for a nonlinearity to hide in.
@@ -80,10 +92,13 @@ sound_event vs system_status leakage check (Figure 4):
     sound_event "hum"    -> system_status "warning"    84 rows (all of them)
     sound_event "rattle" -> system_status "critical"   24 rows
     sound_event "rattle" -> system_status "failed"     24 rows
-- Every health state maps to exactly one sound, zero off-diagonal entries at
-  that level. The only ambiguity: "rattle" covers both degraded states
-  (critical and failed) without separating them, so predicting exact
-  system_status from sound alone scores 476/500 = 95.2%.
+- State the finding in the direction that is actually true: EACH system_status
+  MAPS TO EXACTLY ONE sound_event. The reverse does not hold — "rattle" spans
+  both critical and failed — so predicting exact system_status from sound alone
+  scores 476/500 = 95.2%, and the 24 "failed" hours are what costs the 4.8%.
+- Do NOT claim "zero off-diagonal" or "accuracy 1.0". The matrix is not
+  diagonal and the accuracy is 0.952. The leakage argument does not need the
+  overstatement and is just as damning without it.
 - Direction matters: sound_event carries no information system_status does not
   already carry, and it is recorded at the same timestamp — never earlier.
 - Conclusion: sound_event is a redescription of system_status, not independent

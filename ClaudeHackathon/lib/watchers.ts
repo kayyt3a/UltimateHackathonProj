@@ -3,7 +3,7 @@
 // Entry 2 is computed separately as listener_validation (see brief: using
 // sound_event as a detector is leakage, since it maps 1:1 onto system_status).
 
-import { getWindow } from "./data";
+import { getDerivedConstants, getWindow } from "./data";
 import {
   ListenerValidation,
   SensorRecord,
@@ -14,36 +14,44 @@ import {
   WindowData,
 } from "./types";
 
-const PRESSURE_FIRING_THRESHOLD = -5; // kPa/h, sustained 3h -> Entry 1 firing
-const PRESSURE_SUSTAIN_HOURS = 3;
+// Thresholds come from Person A's notebook via prepared_data.json wherever the
+// notebook actually derives them — see their handoff §"read from here instead
+// of hardcoding a threshold". Only values the notebook does NOT derive are
+// literals below, and each carries the measurement that justifies it.
+const DERIVED_CONSTANTS = getDerivedConstants();
 
-// Entry 1 "watching" needs a real floor. Using `slope < 0` would flag roughly
-// half of all healthy hours, since slope oscillates around zero under noise.
-// -2 kPa/h is a placeholder until Person A supplies the slope noise floor;
-// there is no baseline stat for pressure_slope_6h to derive it from.
-const PRESSURE_WATCHING_THRESHOLD = -2;
+const PRESSURE_FIRING_THRESHOLD = DERIVED_CONSTANTS.escalation.threshold_kpa_per_hour; // -5
+const PRESSURE_SUSTAIN_HOURS = DERIVED_CONSTANTS.escalation.sustained_hours; // 3
 
-const RESIDUAL_FIRING_THRESHOLD = -0.5; // Entry 3 firing — Person A validated
-const RESIDUAL_WATCHING_THRESHOLD = -0.25; // buffer zone; NOT independently validated
+// Entry 1 "watching" floor. Was -2, which Person A measured as flagging 72 of
+// 363 stable hours (20%) — the stable slope is far noisier than expected
+// (std 9.74, p95 +6.06). -4.31 is the 5th percentile of stable slope, so this
+// is a measured floor rather than a guess.
+const PRESSURE_WATCHING_THRESHOLD = -4.31;
 
-// ⚠️ UNRESOLVED — needs Person A.
-// The spec's baseline says residual std = 0.0006, and the spec's own example
-// record for 2026-07-05T06:00Z carries residual = -0.021. That is 35 standard
-// deviations from healthy. Yet the spec also requires Entry 3 to read "quiet"
-// at exactly that hour.
-//
-// Both cannot be true. Either the healthy band is far wider than std=0.0006,
-// or -0.021 is already a serious ventilation anomaly and "quiet" is wrong.
-// A baseline-relative (z-score) watching band was tried here and it flagged
-// that hour at 35 sigma, breaking the agreed fixture test.
-//
-// Resolution is Person A's call, not ours — so this keeps the spec'd absolute
-// thresholds and the agreed test passes. Do not switch to a sigma-based band
-// until the real residual distribution is confirmed.
+// Entry 3 firing threshold, fit by the notebook midway between the healthy and
+// faulty residual populations (-0.5006). 60 firing hours, all inside the two
+// ventilation episodes, zero false positives across 438 healthy hours.
+const RESIDUAL_FIRING_THRESHOLD = DERIVED_CONSTANTS.ventilation_threshold.threshold;
 
-const TEMP_MOVEMENT_EPSILON = 0.02; // deg C/hour considered a real move, not noise
-// NOTE: no baseline stats are provided for temperature_c. This epsilon is a
-// placeholder pending Person A's noise-floor estimate from the notebook.
+// Buffer zone. Person A confirmed no real record lands in this band — residual
+// is cleanly bimodal — so on live data Entry 3 only ever reads quiet or firing.
+// Kept for the fixture tests; don't plan to demo it.
+const RESIDUAL_WATCHING_THRESHOLD = -0.25;
+
+// The honest healthy noise floor for residual. NOT baseline.residual.std:
+// that reads 0.01504, inflated ~50x by two gap-filled interpolation artifacts.
+// The regression's own residual SD (0.000298, fit on 326 clean rows) is the
+// real spread — using the baseline figure understated Entry 3's sigma distance
+// by roughly 50x.
+const RESIDUAL_HEALTHY_SD = DERIVED_CONSTANTS.airflow_model.residual_sd;
+
+// Temperature move that counts as real rather than noise. Was 0.02, which
+// Person A measured as BELOW the noise floor — 360 of 363 stable hours move
+// at least that much, so Entry 4 was firing on noise and reaching the right
+// conclusion for the wrong reason. Median |dT| is 0.44 C/h with sigma 0.66;
+// 1.3 is ~2 sigma, an actual "temperature moved" test.
+const TEMP_MOVEMENT_EPSILON = 1.3;
 
 const GAP_CLUSTER_THRESHOLD = 3; // consecutive gap-filled hours considered "clustering"
 
@@ -161,10 +169,13 @@ function checkEntry3(window: WindowData, timestamp: string): WatcherResult {
   const idx = indexOfTimestamp(records, timestamp);
   const current = records[idx];
 
-  // Reported for context only — deliberately NOT used to set status. See the
-  // unresolved-baseline note at the top of this file.
-  const { mean, std } = window.baseline.residual;
-  const sigmaFromHealthy = std > 0 ? (current.residual - mean) / std : 0;
+  // Reported for context only — deliberately NOT used to set status; the
+  // absolute -0.5 threshold is the validated rule. Measured against the
+  // regression's clean residual SD, not baseline.residual.std (see the
+  // RESIDUAL_HEALTHY_SD note above).
+  const mean = DERIVED_CONSTANTS.ventilation_threshold.healthy_mean;
+  const sigmaFromHealthy =
+    RESIDUAL_HEALTHY_SD > 0 ? (current.residual - mean) / RESIDUAL_HEALTHY_SD : 0;
 
   let rawStatus: WatcherStatus;
   if (current.residual < RESIDUAL_FIRING_THRESHOLD) {

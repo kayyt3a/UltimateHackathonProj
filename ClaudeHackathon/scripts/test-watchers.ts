@@ -9,7 +9,18 @@
 
 import { checkAllWatchers, checkWindow } from "../lib/watchers";
 import { getWindow as getFixtureWindow, FIXTURE_TIMESTAMPS } from "../lib/fixtures";
-import { ALL_RECORDS, BASELINE, DERIVED, FIRST_TIMESTAMP, LAST_TIMESTAMP } from "../lib/data";
+import {
+  loadAllRecords,
+  getBaseline,
+  getDerivedConstants,
+  getTimestampRange,
+  type SensorRecord,
+} from "../lib/data";
+
+const ALL_RECORDS: SensorRecord[] = loadAllRecords();
+const BASELINE = getBaseline();
+const DERIVED = getDerivedConstants();
+const { min: FIRST_TIMESTAMP, max: LAST_TIMESTAMP } = getTimestampRange();
 
 let failures = 0;
 

@@ -57,16 +57,41 @@ Thresholds live at the top of `lib/watchers.ts` as named constants.
   a demo-losing move. Person C: this means severity is already gap-aware,
   don't discount it a second time.
 
+### What live data actually does (measured across all 500 hours)
+
+| Watcher | quiet | watching | firing |
+| --- | ---: | ---: | ---: |
+| Entry 1 (water) | 425 | 26 | 49 |
+| Entry 3 (ventilation) | 440 | **0** | 60 |
+| Entry 4 (temp lag) | 374 | 114 | 12 |
+| Entry 5 (data integrity) | 378 | 122 | **0** |
+
+Two of those zeros are permanent, not bugs — plan the demo around them:
+
+- **Entry 3 never reads `watching` on live data.** Residual is cleanly bimodal;
+  no real record lands between −0.5 and −0.25. It is quiet or firing.
+- **Entry 5 never reads `firing` on live data.** `prepare_data.py` applies the
+  Barry J calibration before writing the JSON, so `airflow_corrected` never
+  equals `airflow_m3s`; and all 6 gap-filled hours are isolated, so the
+  3-consecutive-hour clustering rule can't trigger. If the demo needs Entry 5
+  to visibly do something, drive it from the fixture, not the live feed.
+
 ### ✅ Resolved — the Entry 3 baseline question
 
 Earlier I flagged that `residual = -0.021` sat 35σ from a baseline std of
 0.0006, contradicting the requirement that Entry 3 read `quiet` there.
 
-**Real data settles it.** `prepared_data.json` gives residual std = **0.01504**,
-not 0.0006 — the figure in the original brief was illustrative, not measured.
-At the real std, −0.021 is ~1.4σ: entirely ordinary. Fault residuals sit near
-−1.0 (`faulty_mean = -1.00001`) against a healthy mean of −0.00109, with the
-threshold at −0.5006 midway between. `quiet` was correct.
+**Person A settled it: the contradiction was a fixture artifact.** The real
+record at `2026-07-05T06:00:00Z` has `residual = +0.00001`, not −0.021 — I had
+invented that value when building the fixture. That hour is a *water* episode
+(`pressure_slope_6h = −10.17`); ventilation is genuinely fine, which is exactly
+what Entry 3 reports. Keep the absolute −0.5 threshold.
+
+**Don't use `baseline.residual.std` as the healthy noise floor.** It reads
+0.01504, inflated ~50× by two gap-filled interpolation artifacts (−0.230 and
+−0.175). The honest floor is `derived_constants.airflow_model.residual_sd` =
+**0.000298**, fit on 326 clean rows. Entry 3's σ figure now uses that — the
+earlier version understated the distance by roughly 50×.
 
 Verified across the whole month: **zero false positives on all 368 stable
 hours**, and Entry 3 fires inside both ventilation episodes.
