@@ -1,0 +1,31 @@
+What are APIs and REST-APIs?¶
+Application Programming Interface
+
+Analogy
+Who interacts with the user interface? - the user Who interacts with the application programming interface ? - the application program (eg. the browser)
+
+Representational State Transfer Application Programming Interface
+
+backend architectural pattern that follows the GET/POST/PUT/PATCH/DELETE
+
+Can be represented in Swagger/ Open API specification
+
+Swagger/ Open API specification
+Swagger/ Open API specification
+
+In terms of using RESTful APIs, there are some naming and implementation conventions used to accurately label the endpoint with what it does.
+
+CRUD to HTTP Verb Matching for JSON standard communications with REST-APIs
+CRUD stands for Create, Read, Update, and Delete. RESTful APIs use HTTP verbs to specify the CRUD operation an endpoint is performing.
+
+HTTP Verb	CRUD Operation	Example
+POST	Create	POST /api/projects/ creates a new project
+GET	Read	GET /api/projects/1/ reads project with id 1
+PUT	Replace (whole resource)	PUT /api/projects/1/ replaces all fields
+PATCH	Update (partial)	PATCH /api/projects/1/ updates specific fields
+DELETE	Delete	DELETE /api/projects/1/ deletes the project
+rest-verbs
+
+
+
+
