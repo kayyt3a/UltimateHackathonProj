@@ -86,9 +86,17 @@ export function rulePredictedEscalation(
   }
 
   const slope = entry1.evidence.find((e) =>
-    e.signal.toLowerCase().includes("pressure_slope"),
+    // Same optional chaining as hasPressureSlopeRule: an evidence row with no
+    // signal name sits earlier in the array often enough that a bare
+    // .toLowerCase() here would throw on input the check above accepted.
+    e.signal?.toLowerCase().includes("pressure_slope"),
   );
-  const rate = slope ? `${Math.abs(slope.value)} kPa/h` : "the observed rate";
+  // Only quote a rate we actually have. A missing or zeroed value would
+  // otherwise be spoken as "falling at 0 kPa/h", which is a number we invented.
+  const rate =
+    slope && Number.isFinite(slope.value) && slope.value !== 0
+      ? `${Math.abs(slope.value)} kPa/h`
+      : "the observed rate";
 
   return {
     allowed: true,

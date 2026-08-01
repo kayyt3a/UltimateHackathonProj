@@ -44,7 +44,14 @@ export async function diagnose(timestamp: string): Promise<DiagnoseResponse> {
 
   const { bundle, problems } = watchersResult;
   const { watchers, listener_validation } = bundle;
-  const severity = aggregate(watchers);
+
+  // `aggregate` is a pure worst-of-4 fold, so an empty watcher list folds to
+  // green. That is the one green a dragon must never be shown: it means the
+  // watcher layer was unreadable (a renamed key, a non-object reply), not that
+  // the shelter is calm. Failing upward happens here, where the contract
+  // problems are already in hand, so `aggregate` stays a pure fold.
+  const unreadable = watchers.length === 0;
+  const severity = unreadable ? "amber" : aggregate(watchers);
 
   // A ledger failure must not lose the traffic light.
   let ledger: LedgerEntry[] = [];
@@ -62,6 +69,25 @@ export async function diagnose(timestamp: string): Promise<DiagnoseResponse> {
     await writeCache(timestamp, response);
     return response;
   };
+
+  // Nothing readable to explain, so no Voice call — and no cache write either,
+  // because overwriting a good pre-warmed briefing with a degraded one would
+  // remove the escape hatch exactly when it is needed.
+  if (unreadable) {
+    return {
+      severity,
+      watchers,
+      listener_validation,
+      diagnosis: null,
+      ledger_snapshot: ledger,
+      tokens_used: 0,
+      estimated_cost_usd: 0,
+      warnings: [
+        ...baseWarnings,
+        "No watcher output could be read; severity failed upward to amber rather than reporting green.",
+      ],
+    };
+  }
 
   // Green never pays for a Voice call — there is nothing to explain.
   if (severity === "green") {

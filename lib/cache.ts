@@ -27,6 +27,14 @@ export function cachePath(timestamp: string): string {
  * the filesystem is read-only. A cache write failing must never fail the
  * request that produced a perfectly good diagnosis.
  */
+/**
+ * `Date.now()` has millisecond resolution, so two writes for the same timestamp
+ * in the same tick used to pick the same temp path: the first rename moved it,
+ * the second hit ENOENT and reported the write as failed. A per-process counter
+ * makes the name unique even under a burst of concurrent ticks.
+ */
+let tmpSequence = 0;
+
 export async function writeCache(
   timestamp: string,
   response: DiagnoseResponse,
@@ -34,7 +42,7 @@ export async function writeCache(
   const file = cachePath(timestamp);
   // Never persist the cache-fallback marker — a cached tick is a fresh tick.
   const { served_from_cache: _ignored, ...payload } = response;
-  const tmp = `${file}.${process.pid}.${Date.now()}.tmp`;
+  const tmp = `${file}.${process.pid}.${Date.now()}.${(tmpSequence += 1)}.tmp`;
 
   try {
     await fs.mkdir(path.dirname(file), { recursive: true });

@@ -51,7 +51,9 @@ export function severityWarnings(watchers: WatcherOutput[]): string[] {
   const warnings: string[] = [];
 
   if (watchers.length === 0) {
-    warnings.push("No watcher output received; severity defaulted to green.");
+    // Deliberately does not say "defaulted to green": `aggregate` folds an
+    // empty list to green, but `diagnose` fails that case upward to amber.
+    warnings.push("No watcher output received; there is nothing to aggregate.");
   }
 
   for (const watcher of watchers) {

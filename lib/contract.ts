@@ -53,6 +53,18 @@ function canonicalSubsystem(raw: unknown): Subsystem | null {
   return null;
 }
 
+/**
+ * `Number(null)`, `Number("")` and `Number(false)` are all 0, so a missing
+ * reading would coerce to a real-looking zero and be reported as clean. The
+ * escalation basis quotes this number back to a dragon, so only an actual
+ * number (or a numeric string) counts; everything else is NaN and reported.
+ */
+function numericOrNaN(raw: unknown): number {
+  if (typeof raw === "number") return raw;
+  if (typeof raw === "string" && raw.trim() !== "") return Number(raw);
+  return NaN;
+}
+
 function normaliseEvidence(raw: unknown, label: string, problems: string[]): Evidence[] {
   if (raw == null) return [];
   if (!Array.isArray(raw)) {
@@ -67,8 +79,8 @@ function normaliseEvidence(raw: unknown, label: string, problems: string[]): Evi
       continue;
     }
     const e = item as Record<string, unknown>;
-    const value = Number(e.value);
-    const threshold = Number(e.threshold);
+    const value = numericOrNaN(e.value);
+    const threshold = numericOrNaN(e.threshold);
     if (typeof e.signal !== "string") {
       problems.push(`${label}: evidence[${i}] has no signal name; the escalation rule matches on signal names.`);
     }

@@ -11,7 +11,10 @@ import {
   rulePredictedEscalation,
   ruleScope,
 } from "./escalation";
-import { waterEscalationPhrase } from "./analysis";
+import { TOTAL_EPISODES, waterEscalationPhrase } from "./analysis";
+
+/** Used when a caveat has to be rewritten and nothing safe survives. */
+const FALLBACK_CAVEAT = `Only ${TOTAL_EPISODES} past episodes exist, so this is a pattern, not a promise.`;
 
 /**
  * PART 2 — the Voice agent.
@@ -221,7 +224,7 @@ async function callModel(messages: Anthropic.MessageParam[]) {
     );
   }
 
-  return { raw, response, assistantText: text.text };
+  return { raw, response };
 }
 
 /**
@@ -245,7 +248,7 @@ export async function voice(
   let outputTokens = 0;
   let attempts = 0;
 
-  let { raw, response, assistantText } = await callModel(messages);
+  let { raw, response } = await callModel(messages);
   attempts += 1;
   inputTokens += response.usage.input_tokens;
   outputTokens += response.usage.output_tokens;
@@ -254,7 +257,12 @@ export async function voice(
 
   if (audit.hardViolations.length > 0) {
     // One corrective turn. The model sees exactly which rule it broke.
-    messages.push({ role: "assistant", content: assistantText });
+    // Echo the assistant turn back as the full content array, not just the text
+    // block: this model runs adaptive thinking, and a continuation that drops
+    // the thinking blocks it returned can be rejected outright — which would
+    // turn the one guardrail that stops a fabricated probability into a thrown
+    // request.
+    messages.push({ role: "assistant", content: response.content });
     messages.push({
       role: "user",
       content:
@@ -302,6 +310,15 @@ export async function voice(
   };
 }
 
+/** Drop only the sentences that make a likelihood claim, keep the rest. */
+function stripProbabilitySentences(field: string, value: string): string {
+  return value
+    .split(/(?<=[.!?])\s+/)
+    .filter((sentence) => scanForProbabilityClaims(field, sentence).length === 0)
+    .join(" ")
+    .trim();
+}
+
 /** Sentence-level scrub of anything that survived two attempts. */
 function redactHardViolations(audit: HonestyAudit): HonestyAudit {
   const diagnosis = { ...audit.diagnosis };
@@ -312,11 +329,7 @@ function redactHardViolations(audit: HonestyAudit): HonestyAudit {
     if (typeof value !== "string") continue;
     if (scanForProbabilityClaims(field, value).length === 0) continue;
 
-    const kept = value
-      .split(/(?<=[.!?])\s+/)
-      .filter((sentence) => scanForProbabilityClaims(field, sentence).length === 0)
-      .join(" ")
-      .trim();
+    const kept = stripProbabilitySentences(field, value);
 
     if (kept) {
       diagnosis[field] = kept;
@@ -476,8 +489,10 @@ export function enforceHonesty(
     }
   }
 
-  // No fabricated percentages, anywhere.
-  for (const field of ["reasoning", "escalation_basis", "headline", "recommended_action", "speech_text"] as const) {
+  // No fabricated percentages, anywhere — `caveat` included. It is displayed
+  // next to the reasoning, so a probability smuggled in there reaches the
+  // dragon exactly like one in the reasoning would.
+  for (const field of ["reasoning", "escalation_basis", "headline", "recommended_action", "speech_text", "caveat"] as const) {
     const value = diagnosis[field];
     if (typeof value !== "string") continue;
 
@@ -491,6 +506,13 @@ export function enforceHonesty(
       warnings.push(
         "escalation_basis replaced with the deterministic rule and historical count.",
       );
+    } else if (field === "caveat") {
+      // One formulaic sentence with a safe canonical wording, so it repairs in
+      // place like escalation_basis rather than costing a corrective turn. The
+      // prompt itself contains the word "probability", so treating this as a
+      // hard violation would burn a retry on most honest caveats.
+      diagnosis.caveat = stripProbabilitySentences(field, value) || FALLBACK_CAVEAT;
+      warnings.push("caveat was rewritten to drop a likelihood claim.");
     } else {
       // Free prose a dragon reads. Code cannot rewrite this safely, so it is a
       // hard violation: the caller retries, then redacts. Never ships as-is.
