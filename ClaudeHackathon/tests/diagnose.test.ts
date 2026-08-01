@@ -175,8 +175,30 @@ describe("diagnose — the Voice call fails", () => {
     expect(res.tokens_used).toBe(0);
     expect(res.estimated_cost_usd).toBe(0);
     expect(res.served_from_cache).toBeUndefined();
-    expect(res.warnings?.join(" ")).toMatch(/Live Voice call failed \(socket hang up\)/);
+    expect(res.warnings?.join(" ")).toMatch(/Voice agent could not be reached/);
     expect(res.warnings?.join(" ")).toMatch(/Severity is still valid/);
+    // The Honesty panel is read by operators, not engineers. The raw error
+    // belongs in the server log; leaking it here trains readers to skim past
+    // the one panel that must stay worth reading.
+    expect(res.warnings?.join(" ")).not.toMatch(/socket hang up/);
+  });
+
+  it("reports a missing API key as configuration, not as a model failure", async () => {
+    voiceMock.mockRejectedValue(
+      new Error(
+        'Could not resolve authentication method. Expected one of apiKey, authToken, credentials, config, or profile to be set. Or for one of the "X-Api-Key" or "Authorization" headers to be explicitly omitted',
+      ),
+    );
+    const res = await diagnose(VENT_RED_TS);
+
+    const warnings = res.warnings?.join(" ") ?? "";
+    expect(res.severity).toBe("red");
+    expect(res.diagnosis).toBeNull();
+    expect(warnings).toMatch(/ANTHROPIC_API_KEY/);
+    expect(warnings).toMatch(/computed by code/);
+    // No SDK internals in front of a judge.
+    expect(warnings).not.toMatch(/apiKey, authToken/);
+    expect(warnings).not.toMatch(/X-Api-Key/);
   });
 
   it("serves the cached diagnosis when one exists, flagged as served_from_cache", async () => {
@@ -189,7 +211,8 @@ describe("diagnose — the Voice call fails", () => {
     expect(res.served_from_cache).toBe(true);
     expect(res.diagnosis).toEqual(DIAGNOSIS);
     expect(res.severity).toBe("red");
-    expect(res.warnings?.join(" ")).toMatch(/diagnosis served from cache/);
+    expect(res.warnings?.join(" ")).toMatch(/came from the pre-warmed cache/);
+    expect(res.warnings?.join(" ")).not.toMatch(/503 overloaded/);
   });
 
   it("recomputes severity from live watchers even when the diagnosis comes from cache", async () => {

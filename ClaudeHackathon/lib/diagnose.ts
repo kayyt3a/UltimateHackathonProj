@@ -8,6 +8,37 @@ import { VOICE_MODEL, enforceHonesty, voice } from "./voice";
 import type { Diagnosis, WatcherOutput } from "./types";
 
 /**
+ * Is this failure "nobody configured a key" rather than "the model let us down"?
+ *
+ * The two are not the same finding, and the Honesty audit is read by people
+ * deciding whether to trust the system. A missing credential is an operator
+ * task; a failed or dishonest model call is a claim about the system's
+ * reliability. Reporting the first as the second — in raw SDK wording, listing
+ * `apiKey, authToken, credentials, config, or profile` — teaches a reader that
+ * the audit panel is noise, which is the one thing it cannot afford to be.
+ */
+function isMissingCredentials(err: unknown): boolean {
+  if (!(err instanceof Error)) return false;
+  const m = err.message.toLowerCase();
+  return (
+    m.includes("could not resolve authentication") ||
+    m.includes("apikey") ||
+    m.includes("anthropic_api_key")
+  );
+}
+
+/** What the audit panel should say, given why the Voice call didn't happen. */
+function voiceFailureNote(err: unknown, detail: string): string {
+  return isMissingCredentials(err)
+    ? "Voice narration is switched off — no ANTHROPIC_API_KEY is configured. " +
+        "Severity, watchers and evidence are unaffected: they are computed by code, " +
+        "not the model. Set the key and re-run `npm run prewarm` to turn narration on."
+    : `The Voice agent could not be reached, so no briefing was written for this hour${detail}. ` +
+        "Severity is still valid — it is computed by code, not the model. " +
+        "(Full error in the server log.)";
+}
+
+/**
  * Re-run the honesty guardrails over a diagnosis that came off disk.
  *
  * A cache file is just JSON on the filesystem: it can be stale, it can predate
@@ -153,9 +184,10 @@ export async function diagnose(timestamp: string): Promise<DiagnoseResponse> {
   } catch (err) {
     // The Voice call failed. Severity is still trustworthy — it came from code —
     // so serve the cached diagnosis if we have one, and never a fabricated one.
+    // The raw error stays here, in the server log, where an engineer can read
+    // it. What reaches the Honesty panel is a sentence written for an operator.
     console.error(`[diagnose] voice call failed for ${timestamp}:`, err);
     const cached = await readCache(timestamp);
-    const message = err instanceof Error ? err.message : String(err);
 
     if (cached?.diagnosis) {
       // The cached briefing was written under whatever rules applied then, so
@@ -177,7 +209,9 @@ export async function diagnose(timestamp: string): Promise<DiagnoseResponse> {
           ...(cached.warnings ?? []),
           ...baseWarnings,
           ...rechecked.warnings,
-          `Live Voice call failed (${message}); diagnosis served from cache.`,
+          isMissingCredentials(err)
+            ? "Voice narration is switched off (no ANTHROPIC_API_KEY); this briefing came from the pre-warmed cache and was re-checked against the current watchers."
+            : "The Voice agent could not be reached, so this briefing came from the pre-warmed cache and was re-checked against the current watchers. (Full error in the server log.)",
         ],
       };
     }
@@ -192,7 +226,7 @@ export async function diagnose(timestamp: string): Promise<DiagnoseResponse> {
       estimated_cost_usd: 0,
       warnings: [
         ...baseWarnings,
-        `Live Voice call failed (${message}) and no cached diagnosis exists for ${timestamp}. Severity is still valid — it is computed by code, not the model.`,
+        voiceFailureNote(err, ` and none was cached for ${timestamp}`),
       ],
     };
   }
