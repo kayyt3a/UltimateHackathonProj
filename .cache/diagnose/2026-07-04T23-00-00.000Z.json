@@ -4,36 +4,64 @@
     {
       "entry": "Entry 1",
       "status": "quiet",
-      "subsystem": "water",
-      "evidence": [],
-      "reasoning": "Pressure slope is +0.51 kPa/h; pressure steady at 343.9 kPa."
+      "subsystem": null,
+      "evidence": [
+        {
+          "hour": "2026-07-04T23:00:00Z",
+          "signal": "pressure_slope_6h",
+          "value": 0.5116285714,
+          "threshold": -5
+        }
+      ],
+      "reasoning": "Pressure slope is stable at 0.5 kPa/h."
     },
     {
       "entry": "Entry 3",
       "status": "quiet",
-      "subsystem": "ventilation",
-      "evidence": [],
-      "reasoning": "Airflow residual 0.0003, well inside the -0.5006 fault threshold."
+      "subsystem": null,
+      "evidence": [
+        {
+          "hour": "2026-07-04T23:00:00Z",
+          "signal": "residual",
+          "value": 0.000257289,
+          "threshold": -0.5
+        }
+      ],
+      "reasoning": "Residual is 0.000, inside the healthy band (0σ from baseline mean — see the unresolved-baseline note)."
     },
     {
       "entry": "Entry 4",
       "status": "quiet",
       "subsystem": null,
-      "evidence": [],
-      "reasoning": "No rule: 'cold arrives later' was refuted — temperature and airflow drop in the same hour, not lagged."
+      "evidence": [
+        {
+          "hour": "2026-07-04T23:00:00Z",
+          "signal": "temperature_c_delta",
+          "value": 0.6760000000000019,
+          "threshold": 0.02
+        }
+      ],
+      "reasoning": "No pressure or residual degradation this hour, so there's nothing to test temperature against."
     },
     {
       "entry": "Entry 5",
-      "status": "quiet",
+      "status": "watching",
       "subsystem": null,
-      "evidence": [],
-      "reasoning": "No rule: 'missing pieces' was unsupported — the 6 gaps scatter across the month with no clustering near incidents."
+      "evidence": [
+        {
+          "hour": "2026-07-04T23:00:00Z",
+          "signal": "longest_gap_run_hours",
+          "value": 1,
+          "threshold": 3
+        }
+      ],
+      "reasoning": "Some gap-filled records in this window, but nothing clustering or uncalibrated."
     }
   ],
   "listener_validation": {
     "entry": "Entry 2",
     "accuracy_vs_system_status": 1,
-    "note": "The young dragons' ears are exactly as accurate as the sensors — the rattle carries no information the sensors lack."
+    "note": "Window-local figure only (n=24, 1 distinct sound_event value(s)) — the mapping is fitted on the same rows it scores, so this number is not yet independent evidence. Use Person A's full-dataset confusion matrix."
   },
   "diagnosis": null,
   "ledger_snapshot": [

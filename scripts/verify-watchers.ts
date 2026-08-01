@@ -11,7 +11,7 @@
  *
  * Exit code 0 = safe to integrate. No API key required.
  */
-import { aggregate } from "../lib/aggregate";
+import { aggregate, faultWatchers } from "../lib/aggregate";
 import { DEMO_TIMESTAMPS } from "../lib/cache";
 import { rulePredictedEscalation, ruleScope } from "../lib/escalation";
 import { getWatchersChecked, isUsingFixture } from "../lib/watchers";
@@ -36,7 +36,7 @@ async function main() {
 
   for (const ts of DEMO_TIMESTAMPS) {
     const { bundle, problems } = await getWatchersChecked(ts);
-    const severity = aggregate(bundle.watchers);
+    const severity = aggregate(faultWatchers(bundle.watchers));
     const scope = ruleScope(bundle.watchers);
     const ruling = rulePredictedEscalation(bundle.watchers);
 

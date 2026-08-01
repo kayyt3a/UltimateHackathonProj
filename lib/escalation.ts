@@ -13,8 +13,9 @@ import { canonicalEntry } from "./contract";
  * already-firing warning is, and only for the water pressure-slope signature.
  */
 
-/** Entry 1 or Entry 4 firing scopes the recommendation to plumbing/water. */
-const WATER_ENTRIES = new Set(["Entry 1", "Entry 4"]);
+/** Entry 1 scopes the recommendation to plumbing/water. Entry 4 is REFUTED and
+ * must never scope a recommendation — it was hijacking ventilation faults. */
+const WATER_ENTRIES = new Set(["Entry 1"]);
 /** Entry 3 firing scopes the recommendation to ventilation. */
 const VENTILATION_ENTRIES = new Set(["Entry 3"]);
 

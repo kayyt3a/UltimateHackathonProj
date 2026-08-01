@@ -3,10 +3,17 @@
   "watchers": [
     {
       "entry": "Entry 1",
-      "status": "quiet",
+      "status": "watching",
       "subsystem": "water",
-      "evidence": [],
-      "reasoning": "Pressure slope is -3.83 kPa/h, inside the -5 threshold; water is healthy."
+      "evidence": [
+        {
+          "hour": "2026-07-10T06:00:00Z",
+          "signal": "pressure_slope_6h",
+          "value": -3.8288571429,
+          "threshold": -5
+        }
+      ],
+      "reasoning": "Pressure is declining (-3.8 kPa/h) but hasn't sustained past -5 kPa/h for 3 hours yet."
     },
     {
       "entry": "Entry 3",
@@ -15,38 +22,46 @@
       "evidence": [
         {
           "hour": "2026-07-10T06:00:00Z",
-          "signal": "airflow_residual",
-          "value": -1,
-          "threshold": -0.5006
-        },
-        {
-          "hour": "2026-07-10T06:00:00Z",
-          "signal": "airflow_m3s",
-          "value": 3.74,
-          "threshold": 4.67
+          "signal": "residual",
+          "value": -1.0002421723,
+          "threshold": -0.5
         }
       ],
-      "reasoning": "Airflow is 1.0 m3/s below what the fan power predicts (airflow = 0.125 x power - 1.5, r2 = 0.999999). The fans are turning without moving air."
+      "reasoning": "Residual is -1.000, well past the -0.5 ventilation threshold."
     },
     {
       "entry": "Entry 4",
-      "status": "quiet",
+      "status": "firing",
       "subsystem": null,
-      "evidence": [],
-      "reasoning": "No rule: 'cold arrives later' was refuted — temperature and airflow drop in the same hour, not lagged."
+      "evidence": [
+        {
+          "hour": "2026-07-10T06:00:00Z",
+          "signal": "temperature_c_delta",
+          "value": 0.4989999999999988,
+          "threshold": 0.02
+        }
+      ],
+      "reasoning": "Temperature moved 0.499°C in the same hour as the degradation (lag ≈ 0) — this is NOT an early warning signal, it moves with the event."
     },
     {
       "entry": "Entry 5",
       "status": "quiet",
       "subsystem": null,
-      "evidence": [],
-      "reasoning": "No rule: 'missing pieces' was unsupported — the 6 gaps scatter across the month with no clustering near incidents."
+      "evidence": [
+        {
+          "hour": "2026-07-10T06:00:00Z",
+          "signal": "longest_gap_run_hours",
+          "value": 0,
+          "threshold": 3
+        }
+      ],
+      "reasoning": "All records in this window are original-source, no gaps. Calibration looks clean."
     }
   ],
   "listener_validation": {
     "entry": "Entry 2",
     "accuracy_vs_system_status": 1,
-    "note": "The young dragons' ears are exactly as accurate as the sensors — the rattle carries no information the sensors lack."
+    "note": "The young dragons' ears are exactly as accurate as the sensors — never earlier, never later."
   },
   "diagnosis": null,
   "ledger_snapshot": [

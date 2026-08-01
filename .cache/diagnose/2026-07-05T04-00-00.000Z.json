@@ -9,38 +9,59 @@
         {
           "hour": "2026-07-05T04:00:00Z",
           "signal": "pressure_slope_6h",
-          "value": -7.25,
+          "value": -7.2504571429,
           "threshold": -5
         }
       ],
-      "reasoning": "Pressure is falling at 7.25 kPa/h, past the -5 threshold, but only for 2 hours — the rule needs 3 consecutive hours."
+      "reasoning": "Pressure is declining (-7.3 kPa/h) but hasn't sustained past -5 kPa/h for 3 hours yet."
     },
     {
       "entry": "Entry 3",
       "status": "quiet",
-      "subsystem": "ventilation",
-      "evidence": [],
-      "reasoning": "Airflow residual 0.0004; ventilation is healthy."
+      "subsystem": null,
+      "evidence": [
+        {
+          "hour": "2026-07-05T04:00:00Z",
+          "signal": "residual",
+          "value": 0.0003823011,
+          "threshold": -0.5
+        }
+      ],
+      "reasoning": "Residual is 0.000, inside the healthy band (0σ from baseline mean — see the unresolved-baseline note)."
     },
     {
       "entry": "Entry 4",
-      "status": "quiet",
+      "status": "firing",
       "subsystem": null,
-      "evidence": [],
-      "reasoning": "No rule: 'cold arrives later' was refuted — temperature and airflow drop in the same hour, not lagged."
+      "evidence": [
+        {
+          "hour": "2026-07-05T04:00:00Z",
+          "signal": "temperature_c_delta",
+          "value": 0.2729999999999997,
+          "threshold": 0.02
+        }
+      ],
+      "reasoning": "Temperature moved 0.273°C in the same hour as the degradation (lag ≈ 0) — this is NOT an early warning signal, it moves with the event."
     },
     {
       "entry": "Entry 5",
-      "status": "quiet",
+      "status": "watching",
       "subsystem": null,
-      "evidence": [],
-      "reasoning": "No rule: 'missing pieces' was unsupported — the 6 gaps scatter across the month with no clustering near incidents."
+      "evidence": [
+        {
+          "hour": "2026-07-05T04:00:00Z",
+          "signal": "longest_gap_run_hours",
+          "value": 1,
+          "threshold": 3
+        }
+      ],
+      "reasoning": "Some gap-filled records in this window, but nothing clustering or uncalibrated."
     }
   ],
   "listener_validation": {
     "entry": "Entry 2",
     "accuracy_vs_system_status": 1,
-    "note": "The young dragons' ears are exactly as accurate as the sensors — the rattle carries no information the sensors lack."
+    "note": "The young dragons' ears are exactly as accurate as the sensors — never earlier, never later."
   },
   "diagnosis": null,
   "ledger_snapshot": [

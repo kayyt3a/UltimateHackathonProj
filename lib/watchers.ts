@@ -1,6 +1,7 @@
 import type { WatcherBundle } from "./types";
 import { USING_FIXTURE, checkAllWatchers } from "./watchers-impl";
 import { normaliseWatcherBundle } from "./contract";
+import { canonicalTimestamp } from "./sensor-window";
 
 /**
  * Thin wrapper over Person B's `checkAllWatchers(timestamp)`.
@@ -19,7 +20,7 @@ export interface WatcherFetch {
 }
 
 export async function getWatchersChecked(timestamp: string): Promise<WatcherFetch> {
-  const raw = await checkAllWatchers(timestamp);
+  const raw = await checkAllWatchers(canonicalTimestamp(timestamp));
   const { bundle, problems } = normaliseWatcherBundle(raw);
   return { bundle, problems };
 }

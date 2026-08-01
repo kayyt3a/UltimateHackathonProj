@@ -93,3 +93,79 @@ export interface DiagnoseResponse {
   /** Deterministic guardrails that had to overrule the model this tick. */
   warnings?: string[];
 }
+
+/* ===========================================================================
+ * Person B's types (merged from ClaudeHackathon/lib/types.ts).
+ *
+ * WatcherStatus, Subsystem and the evidence/result shapes were already
+ * identical to ours, so these are aliases rather than duplicates — one shape,
+ * two names, no chance of them drifting apart.
+ * ======================================================================== */
+
+/** Person B's name for WatcherOutput. */
+export type WatcherResult = WatcherOutput;
+/** Person B's name for Evidence. */
+export type WatcherEvidence = Evidence;
+/** Person B's name for WatcherBundle. */
+export type WatcherReport = WatcherBundle;
+
+export interface SensorRecord {
+  timestamp: string;
+  power_kw: number;
+  airflow_m3s: number;
+  airflow_corrected: number;
+  water_pressure_kpa: number;
+  water_flow_lps: number;
+  temperature_c: number;
+  vibration_level: number;
+  sound_event: string;
+  system_status: string;
+  sensor_source: string;
+  is_gap_filled: boolean;
+  residual: number;
+  pressure_slope_6h: number;
+}
+
+export interface BaselineStat {
+  mean: number;
+  std: number;
+}
+
+export interface Baseline {
+  residual: BaselineStat;
+  water_pressure_kpa: BaselineStat;
+  vibration_level: BaselineStat;
+  [key: string]: BaselineStat;
+}
+
+export interface WindowData {
+  records: SensorRecord[];
+  baseline: Baseline;
+}
+
+/* --- Reconciliation agent (Person B) --- */
+
+export type Verdict = "supported" | "refuted" | "untestable" | "disputed";
+
+/**
+ * A row written by the reconciliation agent. Note it carries no `entry` or
+ * `subsystem` field — the note is identified by `id` ("entry_1") or
+ * `source_label`. `lib/escalation.ts` resolves all three forms.
+ */
+export interface LedgerRow {
+  id: string;
+  source_label: string;
+  claim: string;
+  verdict: Verdict;
+  evidence: string;
+  conflicts_with: string | null;
+  data_leans_toward: string | null;
+  operational_rule: string | null;
+  note_to_dragons: string;
+  timestamp_added: string;
+}
+
+export interface ReconcileRequest {
+  source_label: string;
+  text: string;
+}

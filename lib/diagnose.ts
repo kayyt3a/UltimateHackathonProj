@@ -1,4 +1,4 @@
-import { aggregate, severityWarnings } from "./aggregate";
+import { aggregate, faultWatchers, severityWarnings } from "./aggregate";
 import { readCache, writeCache } from "./cache";
 import { estimateCostUsd } from "./cost";
 import { readCurrentLedgerChecked } from "./ledger";
@@ -79,7 +79,7 @@ export async function diagnose(timestamp: string): Promise<DiagnoseResponse> {
   // the shelter is calm. Failing upward happens here, where the contract
   // problems are already in hand, so `aggregate` stays a pure fold.
   const unreadable = watchers.length === 0;
-  const severity = unreadable ? "amber" : aggregate(watchers);
+  const severity = unreadable ? "amber" : aggregate(faultWatchers(watchers));
 
   // A ledger failure must not lose the traffic light.
   let ledger: LedgerEntry[] = [];

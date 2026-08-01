@@ -1,4 +1,5 @@
 import type { Severity, WatcherOutput, WatcherStatus } from "./types";
+import { DIAGNOSTIC_ENTRIES } from "./analysis";
 
 /**
  * PART 1 — the deterministic severity aggregator. No LLM. Ever.
@@ -70,4 +71,17 @@ export function severityWarnings(watchers: WatcherOutput[]): string[] {
 /** Every watcher currently at "firing". */
 export function firingWatchers(watchers: WatcherOutput[]): WatcherOutput[] {
   return watchers.filter((w) => w.status === "firing");
+}
+
+/**
+ * The watchers that describe an actual fault, and may therefore move the
+ * traffic light. Filtering happens here rather than inside `aggregate` so the
+ * fold stays a pure worst-of over whatever it is handed.
+ */
+export function faultWatchers(watchers: WatcherOutput[]): WatcherOutput[] {
+  // Excludes the KNOWN diagnostics rather than allow-listing the known faults.
+  // An entry label we do not recognise must still be able to turn the light
+  // red: allow-listing would silently drop it and report green while a watcher
+  // was firing, which is the one outcome this project exists to prevent.
+  return watchers.filter((w) => !DIAGNOSTIC_ENTRIES.includes(w.entry));
 }

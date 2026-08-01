@@ -67,3 +67,21 @@ export const onsetPhrase = () => `${ONSET.caught} of ${ONSET.total} onset transi
 /** "2 of 2 past water faults" */
 export const waterEscalationPhrase = () =>
   `${EPISODES.water.reachedFailure} of ${EPISODES.water.total} past water faults`;
+
+/**
+ * Which watchers may move the traffic light.
+ *
+ * Only notes the data SUPPORTED describe an actual fault. Person B's Entry 4
+ * and Entry 5 watchers are deliberately repurposed as meta-signals — Entry 4
+ * "firing" means "temperature just proved again that it is NOT an early
+ * warning", and Entry 5 "watching" means gap-filled data may be distorting the
+ * others. Neither is danger to a dragon, so neither belongs in a worst-of fold
+ * over fault severity. Feeding them in made red permanent and green
+ * unreachable.
+ *
+ * They are still returned in `watchers[]` untouched and rendered in the UI.
+ */
+export const FAULT_ENTRIES: readonly string[] = ["Entry 1", "Entry 3"];
+
+/** Entries that report on the notes or the data, not on the shelter. */
+export const DIAGNOSTIC_ENTRIES: readonly string[] = ["Entry 2", "Entry 4", "Entry 5"];

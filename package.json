@@ -11,7 +11,10 @@
     "prewarm": "tsx scripts/prewarm.ts",
     "voice:demo": "tsx scripts/voice-demo.ts",
     "verify:watchers": "tsx scripts/verify-watchers.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:watchers": "tsx scripts/test-watchers.ts",
+    "seed:ledger": "tsx scripts/seed-ledger.ts",
+    "rehearse": "tsx scripts/run-rehearsal.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.115.0",
@@ -24,6 +27,7 @@
     "@types/react": "^19.1.0",
     "tsx": "^4.19.0",
     "typescript": "^5.7.0",
-    "vitest": "^3.0.0"
+    "vitest": "^3.0.0",
+    "@types/react-dom": "^19.1.0"
   }
 }

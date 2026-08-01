@@ -5,6 +5,7 @@ import {
   ruleScope,
 } from "@/lib/escalation";
 import { enforceHonesty, buildVoicePrompt } from "@/lib/voice";
+import { aggregate, faultWatchers } from "@/lib/aggregate";
 import { FIXTURES } from "@/lib/fixtures/watchers";
 import LEDGER from "@/data/knowledge_ledger.json";
 import type { LedgerEntry } from "@/lib/types";
@@ -76,14 +77,16 @@ describe("scope rule — never a blanket shutdown", () => {
     });
   });
 
-  it("Entry 4 firing -> plumbing / water", () => {
+  it("Entry 4 firing does NOT scope the recommendation — its note is refuted", () => {
+    // Person B's Entry 4 fires to mean "temperature just proved AGAIN it is not
+    // an early warning", not "the water is in trouble". Letting it scope was
+    // hijacking genuine ventilation faults and pointing dragons at the plumbing.
     const watchers = structuredClone(FIXTURES.ALL_QUIET.watchers);
     watchers[2].status = "firing";
-    expect(ruleScope(watchers)).toMatchObject({
-      subsystem_scope: "water",
-      mode: "plumbing",
-      entry_cited: "Entry 4",
-    });
+    // It may still be NAMED as the active watcher — that is accurate — but it
+    // must not scope a plumbing shutdown, and it must not move the light.
+    expect(ruleScope(watchers).mode).toBe("stable");
+    expect(aggregate(faultWatchers(watchers))).toBe("green");
   });
 
   it("water wins over ventilation when both fire — water is the one that escalates", () => {

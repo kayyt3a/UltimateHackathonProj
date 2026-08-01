@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { aggregate } from "@/lib/aggregate";
+import { aggregate, faultWatchers } from "@/lib/aggregate";
 import { getWatchers } from "@/lib/watchers";
 import { cacheKey, DEMO_TIMESTAMPS } from "@/lib/cache";
 import { estimateCostUsd, ratesFor } from "@/lib/cost";
@@ -23,7 +23,7 @@ describe("watcher lookup -> severity, per demo timestamp", () => {
   for (const ts of DEMO_TIMESTAMPS) {
     it(`${ts} -> ${expected[ts]}`, async () => {
       const { watchers } = await getWatchers(ts);
-      expect(aggregate(watchers)).toBe(expected[ts]);
+      expect(aggregate(faultWatchers(watchers))).toBe(expected[ts]);
     });
   }
 
@@ -34,7 +34,7 @@ describe("watcher lookup -> severity, per demo timestamp", () => {
       "2026-07-05T06:00Z",
     ]) {
       const { watchers } = await getWatchers(spelling);
-      expect(aggregate(watchers), spelling).toBe("red");
+      expect(aggregate(faultWatchers(watchers)), spelling).toBe("red");
     }
   });
 
