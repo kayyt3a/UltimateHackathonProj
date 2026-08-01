@@ -117,3 +117,39 @@ Possible values:
 Description:
 Identifies the source of sensor readings. Barry J sensor readings
 contain a small consistent calibration offset (find it and remove it!).
+
+---
+
+## The application
+
+**Cloudy's Second Opinion** lives in **`ClaudeHackathon/`** — one Next.js app
+containing all four slices:
+
+| Slice | Where |
+| --- | --- |
+| Person A — data layer, analysis | `ClaudeHackathon/lib/data.ts`, `prepared_data.json`, `verdicts.md` |
+| Person B — watchers, reconciliation agent | `ClaudeHackathon/lib/watchers.ts`, `app/api/reconcile` |
+| Person C — severity, Voice agent, API | `ClaudeHackathon/lib/{aggregate,voice,diagnose}.ts`, `app/api/diagnose` |
+| Person D — interface | `ClaudeHackathon/app/page.tsx`, `docs/ui-mockup.html` |
+
+### Run it
+
+```bash
+cd ClaudeHackathon
+npm install
+npm run dev            # http://localhost:3000
+```
+
+Optional — Cloudy only speaks with a key:
+
+```bash
+export ANTHROPIC_API_KEY=sk-ant-...
+npm run prewarm        # fills the demo cache with real briefings
+```
+
+### Check it
+
+```bash
+npm test               # 309 tests, no API key needed
+npm run verify:watchers    # severity/scope/escalation for each demo hour
+```

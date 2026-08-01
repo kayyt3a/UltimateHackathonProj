@@ -3,7 +3,12 @@
 // Entry 2 is computed separately as listener_validation (see brief: using
 // sound_event as a detector is leakage, since it maps 1:1 onto system_status).
 
-import { getDerivedConstants, getWindow } from "./data";
+// Thresholds come straight from Person A's derived constants — never hardcoded.
+import { getDerivedConstants } from "./data";
+// ...but the window comes through the adapter, which coerces Person A's honestly
+// nullable pressure_slope_6h/residual to numbers before these watchers compare
+// them. Reading ./data directly here crashes on the first hours of the month.
+import { getWindow } from "./watcher-window";
 import {
   ListenerValidation,
   SensorRecord,

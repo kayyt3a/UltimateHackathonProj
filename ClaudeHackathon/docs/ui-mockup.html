@@ -1,0 +1,499 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Cloudy's Second Opinion — an early-warning and evidence-reconciliation interface for Reid Library." />
+  <title>Cloudy's Second Opinion</title>
+  <style>
+    :root {
+      --ink: #302e2a;
+      --soft: #6e675b;
+      --cream: #f4eddd;
+      --paper: #fffaf0;
+      --deep: #e9ddc5;
+      --line: #d6c8ac;
+      --green: #4f715a;
+      --green-soft: #dce8d7;
+      --amber: #b97229;
+      --amber-soft: #f4d7a5;
+      --red: #a64233;
+      --red-soft: #efcec7;
+      --blue: #50748a;
+      --shadow: 0 18px 50px rgba(67, 51, 27, .10);
+    }
+
+    * { box-sizing: border-box; }
+    html { background: var(--cream); }
+    body { margin: 0; color: var(--ink); background: var(--cream); font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    button, input, textarea { font: inherit; }
+    button { color: inherit; }
+    [hidden] { display: none !important; }
+
+    /* Login */
+    .login-screen { position: fixed; inset: 0; z-index: 50; min-height: 100vh; display: grid; place-items: center; padding: 24px; overflow: hidden; background: #050906; color: #8cf5a6; font-family: "Courier New", ui-monospace, monospace; }
+    .login-screen::after { content: ""; position: absolute; inset: 0; opacity: .16; background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(140,245,166,.12) 3px); pointer-events: none; }
+    .terminal { position: relative; z-index: 1; width: min(760px, 100%); min-height: 470px; padding: clamp(30px, 6vw, 62px); border: 1px solid #31583b; border-radius: 5px; background: #071009; box-shadow: inset 0 0 70px rgba(50,147,74,.06), 0 0 80px rgba(28,83,42,.12); }
+    .terminal-kicker { margin: 0 0 22px; color: #4f8c5f; font-size: .7rem; letter-spacing: .14em; }
+    .terminal h1 { max-width: 620px; margin: 0; font: 700 clamp(1.25rem, 4vw, 2rem)/1.4 "Courier New", monospace; letter-spacing: .04em; text-shadow: 0 0 12px rgba(140,245,166,.35); }
+    .last-login { margin: 18px 0 34px; color: #4f8c5f; font-size: .8rem; }
+    .login-form { display: grid; gap: 15px; }
+    .login-form label { display: grid; grid-template-columns: 100px 1fr; align-items: center; }
+    .login-form label span { color: #69b77b; }
+    .login-form input { max-width: 290px; padding: 8px 10px; border: 0; border-bottom: 1px solid #31583b; border-radius: 0; outline: 0; background: transparent; color: #a6f5b7; font: 1rem "Courier New", monospace; }
+    .login-form input[readonly] { color: #507a58; }
+    .enter-button { justify-self: start; margin-top: 9px; padding: 9px 12px; border: 0; background: transparent; color: #8cf5a6; font: 700 1rem "Courier New", monospace; cursor: pointer; }
+    .enter-button:hover, .enter-button:focus { background: #8cf5a6; color: #071008; outline: none; }
+    .login-hint { margin: 0 0 0 10px; color: #4b8157; font-size: .68rem; }
+    .skip-button { position: absolute; right: 26px; bottom: 24px; border: 0; background: transparent; color: #4c8057; font: .74rem "Courier New", monospace; cursor: pointer; }
+    .skip-button:hover { color: #8cf5a6; }
+    .boot { min-height: 180px; color: #7cdf92; line-height: 1.8; }
+    .boot p { margin: 0; }
+    .cursor { animation: blink .7s steps(1) infinite; }
+    @keyframes blink { 50% { opacity: 0; } }
+
+    /* Product */
+    .app { width: min(1180px, calc(100% - 40px)); margin: 0 auto; padding: 34px 0 46px; }
+    .masthead { display: flex; align-items: end; justify-content: space-between; gap: 24px; margin-bottom: 24px; }
+    .eyebrow { margin: 0; color: var(--soft); font-size: .7rem; font-weight: 850; letter-spacing: .13em; text-transform: uppercase; }
+    .masthead h1 { margin: 4px 0 0; font: 700 clamp(2rem, 4vw, 3.3rem)/1 Georgia, "Times New Roman", serif; letter-spacing: -.045em; }
+    .timestamp { display: grid; gap: 3px; min-width: 180px; padding-left: 14px; border-left: 2px solid var(--ink); }
+    .timestamp span { color: var(--soft); font-size: .65rem; font-weight: 850; letter-spacing: .14em; }
+    .timestamp b { font-size: .88rem; }
+
+    .status-banner { display: grid; grid-template-columns: auto 1fr auto; gap: 22px; align-items: center; min-height: 220px; padding: clamp(27px, 5vw, 52px); border: 1px solid rgba(48,46,42,.17); border-radius: 28px 28px 28px 7px; box-shadow: var(--shadow); }
+    .status-banner.green { background: var(--green-soft); color: #284430; }
+    .status-banner.amber { background: var(--amber-soft); color: #50331a; }
+    .status-banner.red { background: var(--red-soft); color: #53231c; }
+    .signal { width: 58px; height: 58px; display: grid; place-items: center; border: 2px solid currentColor; border-radius: 50%; }
+    .signal::after { content: ""; width: 24px; height: 24px; border-radius: 50%; background: currentColor; }
+    .status-meta { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; font-size: .73rem; font-weight: 900; letter-spacing: .13em; text-transform: uppercase; }
+    .status-copy h2 { max-width: 820px; margin: 0; font: 700 clamp(2rem, 5vw, 4.35rem)/.98 Georgia, "Times New Roman", serif; letter-spacing: -.045em; }
+    .status-copy > p { max-width: 780px; margin: 15px 0 0; font-size: clamp(1rem, 1.8vw, 1.22rem); font-weight: 650; line-height: 1.42; }
+    .escalating { padding: 7px 11px; border: 1px solid currentColor; border-radius: 999px; background: rgba(255,255,255,.35); font-size: .66rem; letter-spacing: .09em; animation: pulse 1.8s ease-in-out infinite; }
+    @keyframes pulse { 50% { transform: scale(1.04); } }
+    .speak { align-self: end; padding: 11px 15px; border: 1px solid currentColor; border-radius: 999px; background: rgba(255,255,255,.35); font-size: .78rem; font-weight: 850; cursor: pointer; white-space: nowrap; }
+    .cloudy-note { display: grid; grid-template-columns: auto 1fr auto; gap: 16px; align-items: center; margin: -4px 24px 40px; padding: 20px 24px; border: 1px solid var(--line); border-top: 0; border-radius: 0 0 18px 18px; background: var(--paper); }
+    .avatar { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 12px; background: var(--ink); color: var(--paper); font: italic 700 1.1rem Georgia, serif; }
+    .cloudy-note blockquote { margin: 0; font: italic 1.04rem/1.48 Georgia, serif; }
+    .confidence { max-width: 270px; display: grid; gap: 4px; text-align: right; }
+    .confidence b { font-size: .7rem; letter-spacing: .08em; text-transform: uppercase; }
+    .confidence small { color: var(--soft); font-size: .7rem; line-height: 1.35; }
+
+    .section { margin: 44px 0; }
+    .section-head { display: flex; align-items: end; justify-content: space-between; gap: 20px; }
+    .section-head h2, .panel h2, .ingest h2 { margin: 5px 0 0; font: 700 clamp(1.5rem, 2.8vw, 2.15rem)/1.1 Georgia, serif; letter-spacing: -.025em; }
+    .section-head > p { margin: 0; color: var(--soft); font-size: .84rem; }
+    .watchers { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 18px; }
+    .watcher { border: 1px solid var(--line); border-radius: 16px; background: rgba(255,250,240,.82); overflow: hidden; }
+    .watcher > button { width: 100%; min-height: 82px; display: grid; grid-template-columns: auto 1fr auto auto; gap: 11px; align-items: center; padding: 16px; border: 0; background: transparent; text-align: left; cursor: pointer; }
+    .watcher-label { display: grid; gap: 3px; }
+    .watcher-label small { color: var(--soft); font-size: .7rem; }
+    .dot { width: 13px; height: 13px; border-radius: 50%; background: #aaa395; box-shadow: 0 0 0 5px rgba(170,163,149,.16); }
+    .watcher.watching .dot { background: var(--amber); box-shadow: 0 0 0 5px rgba(185,114,41,.14); }
+    .watcher.firing .dot { background: var(--red); box-shadow: 0 0 0 5px rgba(166,66,51,.13); }
+    .watcher.confirmed .dot { background: var(--blue); }
+    .watcher-status { padding: 5px 8px; border-radius: 999px; background: #ebe4d8; font-size: .62rem; font-weight: 850; text-transform: uppercase; }
+    .watcher.watching .watcher-status { background: #f4dfb8; color: #7a4618; }
+    .watcher.firing .watcher-status { background: #f0d2cc; color: #7b2f25; }
+    .watcher-detail { padding: 14px 16px 18px 40px; border-top: 1px dashed var(--line); font-size: .82rem; line-height: 1.5; }
+    .evidence { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; margin-top: 10px; }
+    .evidence div { padding: 8px; border-radius: 8px; background: var(--deep); }
+    .evidence small { display: block; color: var(--soft); font-size: .6rem; text-transform: uppercase; }
+    .evidence b { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: .78rem; }
+
+    .two-col { display: grid; grid-template-columns: 1.2fr .8fr; gap: 18px; margin-bottom: 18px; }
+    .panel { padding: 26px; border: 1px solid var(--line); border-radius: 20px; background: rgba(255,250,240,.84); box-shadow: 0 10px 28px rgba(73,56,29,.05); }
+    .panel-top { display: flex; justify-content: space-between; align-items: end; gap: 20px; }
+    .accuracy { color: var(--green); font: 700 2.6rem/1 Georgia, serif; }
+    .listener-match { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 20px 0 13px; }
+    .listener-match div { padding: 14px; border-radius: 12px; background: var(--green-soft); }
+    .listener-match span { display: block; color: #46584a; font-size: .7rem; }
+    .listener-match b { font: 700 1.3rem Georgia, serif; }
+    .panel > p { color: var(--soft); font: italic .98rem/1.5 Georgia, serif; }
+    .lead { display: flex; align-items: center; gap: 12px; margin: 18px 0 6px; }
+    .lead strong { color: var(--amber); font: 700 4rem/1 Georgia, serif; }
+    .lead span { font-size: .72rem; font-weight: 850; letter-spacing: .08em; text-transform: uppercase; }
+    .chart-panel { margin-bottom: 18px; }
+    .chart-key { display: flex; gap: 14px; color: var(--soft); font-size: .7rem; }
+    .chart-key span::before { content: ""; display: inline-block; width: 18px; height: 3px; margin-right: 5px; vertical-align: middle; background: currentColor; }
+    .chart-key .residual { color: #b9653f; }
+    .chart-key .pressure { color: #3f6751; }
+    #sensorChart { width: 100%; height: 310px; margin-top: 14px; display: block; }
+
+    .replay { margin: 18px 0 44px; padding: 26px; border: 1px solid var(--line); border-radius: 20px; background: var(--deep); }
+    .replay output { font: 700 .86rem ui-monospace, Consolas, monospace; }
+    .replay input[type="range"] { width: 100%; margin: 27px 0 15px; accent-color: var(--ink); }
+    .jumps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 9px; }
+    .jumps button { display: grid; gap: 3px; padding: 11px 13px; border: 1px solid #c5b697; border-radius: 10px; background: rgba(255,250,240,.62); text-align: left; cursor: pointer; }
+    .jumps button.active, .jumps button:hover { border-color: var(--ink); background: var(--paper); }
+    .jumps b { font-size: .75rem; }
+    .jumps span { color: var(--soft); font-size: .66rem; }
+
+    .decision { margin-bottom: 44px; padding: clamp(24px, 4vw, 38px); border: 1px solid #b99a6a; border-radius: 22px 22px 22px 6px; background: #fff7e8; }
+    .stream { display: inline-flex; align-items: center; gap: 7px; padding: 7px 10px; border: 1px solid #91a995; border-radius: 999px; background: #edf5e9; color: #3f6048; font-size: .65rem; font-weight: 850; text-transform: uppercase; }
+    .stream::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--green); }
+    .sources { display: flex; flex-wrap: wrap; gap: 7px; margin: 18px 0 13px; }
+    .sources span { padding: 6px 9px; border: 1px solid var(--line); border-radius: 7px; background: var(--paper); color: var(--soft); font-size: .67rem; }
+    .steps { list-style: none; display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 0; padding: 0; }
+    .steps li { min-height: 158px; padding: 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); }
+    .steps li > span { display: block; margin-bottom: 16px; color: var(--amber); font: 700 .75rem ui-monospace, Consolas, monospace; }
+    .steps b { font: 700 1rem Georgia, serif; }
+    .steps p { margin: 7px 0 0; color: var(--soft); font-size: .73rem; line-height: 1.45; }
+    .decision blockquote { margin: 17px 0 0; padding: 15px 18px; border-left: 4px solid var(--amber); background: var(--amber-soft); font: italic 1rem/1.5 Georgia, serif; }
+
+    .verdict-key { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0 11px; }
+    .verdict-key span, .verdict { padding: 5px 9px; border-radius: 999px; font-size: .63rem; font-weight: 850; text-transform: uppercase; }
+    .supported { background: var(--green-soft); color: #31563b; }
+    .refuted { background: var(--red-soft); color: #7a3027; }
+    .untestable { background: #e6e1d8; color: #625e56; }
+    .disputed { background: var(--amber-soft); color: #774612; }
+    .ledger { display: grid; gap: 10px; }
+    .ledger-row { border: 1px solid var(--line); border-radius: 15px; background: rgba(255,250,240,.8); overflow: hidden; }
+    .ledger-row.is-disputed { border-color: #cf8a3d; box-shadow: inset 5px 0 #cf8a3d; background: #fff5df; }
+    .ledger-row > button { width: 100%; display: grid; grid-template-columns: auto 1fr auto auto; gap: 13px; align-items: center; padding: 17px 18px; border: 0; background: transparent; text-align: left; cursor: pointer; }
+    .verdict-icon { display: grid; place-items: center; width: 29px; height: 29px; border: 1px solid currentColor; border-radius: 50%; font-weight: 900; }
+    .claim { display: grid; gap: 4px; }
+    .claim small { color: var(--soft); font-size: .66rem; }
+    .claim b { font: 700 1rem/1.3 Georgia, serif; }
+    .ledger-detail { padding: 0 18px 18px 60px; }
+    .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .compare div { padding: 13px; border-radius: 10px; background: rgba(239,208,156,.36); }
+    .compare small { font-size: .6rem; font-weight: 850; text-transform: uppercase; }
+    .compare p { margin: 6px 0 0; font: 700 .92rem/1.4 Georgia, serif; }
+    .ledger-detail dl { margin: 13px 0 0; display: grid; gap: 8px; }
+    .ledger-detail dl div { display: grid; grid-template-columns: 125px 1fr; gap: 10px; }
+    .ledger-detail dt { color: var(--soft); font-size: .67rem; font-weight: 850; text-transform: uppercase; }
+    .ledger-detail dd { margin: 0; font-size: .8rem; line-height: 1.45; }
+
+    .ingest { display: grid; grid-template-columns: .75fr 1.25fr; gap: 34px; margin-top: 44px; padding: clamp(24px, 4vw, 42px); border-radius: 22px; background: var(--ink); color: var(--paper); }
+    .ingest .eyebrow { color: #bdb19e; }
+    .ingest-intro > p:not(.eyebrow) { color: #cfc6b7; line-height: 1.55; }
+    .example-button { margin-top: 14px; padding: 8px 11px; border: 1px solid #8b8376; border-radius: 999px; background: transparent; color: var(--paper); font-size: .73rem; cursor: pointer; }
+    .ingest form { display: grid; gap: 12px; }
+    .ingest label { display: grid; gap: 6px; }
+    .ingest label > span { color: #cbc2b3; font-size: .66rem; font-weight: 850; letter-spacing: .08em; text-transform: uppercase; }
+    .ingest input, .ingest textarea { width: 100%; padding: 12px 13px; border: 1px solid #716b61; border-radius: 10px; outline: 0; background: #fbf4e8; color: var(--ink); }
+    .ingest textarea { min-height: 132px; resize: vertical; line-height: 1.5; }
+    .ingest form button { justify-self: start; padding: 12px 18px; border: 0; border-radius: 999px; background: #f0b755; color: #3e2a12; font-weight: 850; cursor: pointer; }
+    .toast { position: fixed; right: 22px; bottom: 22px; z-index: 30; max-width: 440px; display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; padding: 17px; border: 1px solid #c57e2f; border-radius: 15px; background: #ffe5b7; box-shadow: 0 18px 50px rgba(48,46,42,.22); }
+    .toast > span { font-size: 1.4rem; }
+    .toast p { margin: 0; }
+    .toast small { display: block; margin-top: 3px; color: var(--soft); }
+    .toast button { border: 0; background: transparent; font-size: 1.3rem; cursor: pointer; }
+
+    .analysis { margin: 26px 0; border: 1px solid var(--line); border-radius: 16px; background: rgba(255,250,240,.68); overflow: hidden; }
+    .analysis summary { display: flex; justify-content: space-between; gap: 20px; padding: 18px 20px; cursor: pointer; list-style: none; }
+    .analysis summary::-webkit-details-marker { display: none; }
+    .analysis summary span:first-child { display: grid; gap: 3px; }
+    .analysis summary small { color: var(--soft); font-size: .64rem; text-transform: uppercase; }
+    .analysis summary b { font: 700 1.08rem Georgia, serif; }
+    .methods { display: grid; grid-template-columns: .72fr 1.28fr; gap: 22px; padding: 24px; border-top: 1px solid var(--line); background: #f1e6d2; }
+    .methods h3 { margin: 6px 0 8px; font: 700 1.45rem Georgia, serif; }
+    .methods > div > p:last-child { color: var(--soft); font-size: .8rem; line-height: 1.5; }
+    .method-list { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+    .method-list div { padding: 13px; border: 1px solid var(--line); border-radius: 11px; background: var(--paper); }
+    .method-list b { font: 700 .88rem Georgia, serif; }
+    .method-list p { margin: 4px 0 0; color: var(--soft); font-size: .69rem; line-height: 1.4; }
+    .mini-charts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; padding: 0 18px 18px; }
+    .mini-charts figure { margin: 0; padding: 9px; border: 1px solid var(--line); border-radius: 11px; background: var(--paper); }
+    .mini-charts canvas { width: 100%; height: 180px; display: block; background: #fffdf7; }
+    .mini-charts figcaption { margin-top: 8px; color: var(--soft); font-size: .69rem; }
+    footer { display: flex; justify-content: space-between; gap: 20px; padding-top: 12px; color: var(--soft); font-size: .7rem; }
+    footer p { margin: 0; }
+
+    @media (max-width: 900px) {
+      .watchers, .steps { grid-template-columns: 1fr 1fr; }
+      .two-col, .ingest, .methods { grid-template-columns: 1fr; }
+      .cloudy-note { grid-template-columns: auto 1fr; }
+      .confidence { grid-column: 2; max-width: none; text-align: left; }
+    }
+    @media (max-width: 640px) {
+      .app { width: min(100% - 24px, 1180px); padding-top: 20px; }
+      .masthead { align-items: start; }
+      .timestamp { min-width: 0; }
+      .status-banner { grid-template-columns: 1fr; min-height: 0; }
+      .status-copy h2 { font-size: 2.25rem; }
+      .speak { justify-self: start; }
+      .watchers, .steps, .mini-charts, .method-list { grid-template-columns: 1fr; }
+      .jumps { grid-template-columns: 1fr 1fr; }
+      .compare { grid-template-columns: 1fr; }
+      .ledger-detail { padding-left: 18px; }
+      .ledger-detail dl div { grid-template-columns: 1fr; gap: 3px; }
+      .toast { left: 12px; right: 12px; bottom: 12px; }
+      footer { flex-direction: column; }
+      .login-form label { grid-template-columns: 85px 1fr; }
+    }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; } }
+  </style>
+</head>
+<body>
+  <section class="login-screen" id="loginScreen" aria-labelledby="loginTitle">
+    <div class="terminal">
+      <p class="terminal-kicker">CLOUDY-OS / ARCHIVE NODE 01</p>
+      <h1 id="loginTitle">REID LIBRARY — ESSENTIAL SYSTEMS MONITOR</h1>
+      <p class="last-login">last login: 14 November 2025, 03:12</p>
+      <form class="login-form" id="loginForm">
+        <label><span>user:</span><input value="cloudy" readonly aria-label="User" /></label>
+        <label><span>password:</span><input type="password" value="cloudy!!" autofocus aria-label="Password" /></label>
+        <button class="enter-button" type="submit">[ ENTER ]</button>
+        <p class="login-hint">DEMO ACCESS — no account required. Any password continues.</p>
+      </form>
+      <div class="boot" id="boot" hidden aria-live="polite"></div>
+      <button class="skip-button" id="skipBoot" type="button">Skip boot →</button>
+    </div>
+  </section>
+
+  <main class="app" id="product" hidden>
+    <header class="masthead">
+      <div><p class="eyebrow">Reid Library · essential systems</p><h1>Cloudy's Second Opinion</h1></div>
+      <div class="timestamp"><span>REPLAYING</span><b id="timestampText">5 Jul, 06:00 UTC</b></div>
+    </header>
+
+    <section class="status-banner amber" id="statusBanner" aria-live="polite">
+      <div class="signal" aria-hidden="true"></div>
+      <div class="status-copy">
+        <div class="status-meta"><span id="statusLabel">Needs attention</span><strong class="escalating" id="escalating">likely escalating</strong></div>
+        <h2 id="headline">Pressure falling, pipes complaining</h2>
+        <p id="action">Shut the west valve manually before the gauge reads critical.</p>
+      </div>
+      <button class="speak" id="speakButton" type="button">◖)) Hear Cloudy</button>
+    </section>
+
+    <section class="cloudy-note" id="cloudyNote">
+      <div class="avatar">C</div>
+      <blockquote id="reasoning">“Pressure's slid steadily for four hours — same shape as always, Cloudy would say.”</blockquote>
+      <div class="confidence"><b id="confidence">moderate confidence</b><small id="caveat">Based on only two past water faults — treat as a strong hint, not a certainty.</small></div>
+    </section>
+
+    <section class="section" aria-labelledby="watcherTitle">
+      <div class="section-head"><div><p class="eyebrow">Cloudy's four rules</p><h2 id="watcherTitle">What the watchers see</h2></div><p>Tap any rule to see its numbers.</p></div>
+      <div class="watchers" id="watchers"></div>
+    </section>
+
+    <div class="two-col">
+      <section class="panel">
+        <div class="panel-top"><div><p class="eyebrow">Entry 2 · never changes severity</p><h2>The listeners, scored</h2></div><strong class="accuracy">100%</strong></div>
+        <div class="listener-match"><div><span>Young dragons heard it</span><b>2 of 2</b></div><div><span>Sensors confirmed it</span><b>2 of 2</b></div></div>
+        <p>The young dragons' ears are exactly as accurate as the sensors — never earlier, never later.</p>
+      </section>
+      <section class="panel"><p class="eyebrow">What happens next</p><h2 id="forecastTitle">A useful head start</h2><div class="lead" id="lead"><strong>8</strong><span>hours<br />estimated</span></div><p id="forecastCopy">This pattern preceded total failure in both past water faults.</p></section>
+    </div>
+
+    <section class="panel chart-panel">
+      <div class="panel-top"><div><p class="eyebrow">Arithmetic, not an AI guess</p><h2>The preceding 48 hours</h2></div><div class="chart-key"><span class="residual">Residual</span><span class="pressure">Pressure slope</span></div></div>
+      <canvas id="sensorChart" width="1080" height="310" aria-label="Residual and pressure slope over 48 hours"></canvas>
+    </section>
+
+    <section class="replay">
+      <div class="section-head"><div><p class="eyebrow">Move through the incident</p><h2>Replay July</h2></div><output id="replayOutput">5 Jul, 06:00 UTC</output></div>
+      <input id="timeline" type="range" min="0" max="3" step="1" value="1" aria-label="Replay timestamp" />
+      <div class="jumps" id="jumps">
+        <button data-state="calm"><b>Calm</b><span>Jul 4 · 23:00</span></button>
+        <button data-state="amber" class="active"><b>Early warning</b><span>Jul 5 · 06:00</span></button>
+        <button data-state="water"><b>Water failure</b><span>Jul 6 · 00:00</span></button>
+        <button data-state="vent"><b>Ventilation</b><span>Jul 10 · 06:00</span></button>
+      </div>
+    </section>
+
+    <section class="decision">
+      <div class="section-head"><div><p class="eyebrow">Continuous evidence, safe decisions</p><h2>How new information changes a decision</h2></div><span class="stream">ready for the next source</span></div>
+      <div class="sources"><span>maintenance records</span><span>partial sensor logs</span><span>unfinished repair notes</span><span>young dragons' observations</span></div>
+      <ol class="steps"><li><span>01</span><b>Receive</b><p>Accept every arrival as a named source without assuming it is true.</p></li><li><span>02</span><b>Test</b><p>Compare its claim with the ledger and matching sensor window.</p></li><li><span>03</span><b>Keep conflict visible</b><p>Show both claims and say which way the data leans.</p></li><li><span>04</span><b>Act with context</b><p>Recommend action with confidence and caveats attached.</p></li></ol>
+      <blockquote>“We never silently pick a winner: every source stays traceable and every conflict stays visible.”</blockquote>
+    </section>
+
+    <section class="section">
+      <div class="section-head"><div><p class="eyebrow">Nothing gets silently overwritten</p><h2>Knowledge ledger</h2></div><p><span id="claimCount">2</span> claims tested</p></div>
+      <div class="verdict-key"><span class="supported">✓ supported</span><span class="refuted">✕ refuted</span><span class="untestable">? untestable</span><span class="disputed">⚠ disputed</span></div>
+      <div class="ledger" id="ledger"></div>
+    </section>
+
+    <section class="ingest">
+      <div class="ingest-intro"><p class="eyebrow">Reconciliation agent</p><h2>New information just arrived</h2><p>Paste each arriving claim. We test it without erasing the older source, so the decision trail keeps growing.</p><button class="example-button" id="useExample" type="button">Use disagreement example</button></div>
+      <form id="reconcileForm"><label><span>Source label</span><input id="source" value="Visitor's handwritten note" /></label><label><span>What does it say?</span><textarea id="newClaim" placeholder="Paste or type the document's claim here…" required></textarea></label><button type="submit">Test against the ledger →</button></form>
+    </section>
+
+    <div class="toast" id="toast" hidden role="status"><span>⚠</span><p><b>Disagreement found — we kept both claims visible.</b><small>The new row is open at the top of the ledger.</small></p><button id="dismissToast" type="button" aria-label="Dismiss">×</button></div>
+
+    <details class="analysis">
+      <summary><span><small>Evidence behind the rules</small><b>How we know this</b></span><span>Methods + 3 analysis figures</span></summary>
+      <div class="methods"><div><p class="eyebrow">Data science component</p><h3>Four methods, each with a visible output</h3><p>The language model explains the result; it does not decide the alarm. Detection is reproducible arithmetic.</p></div><div class="method-list"><div><b>1 · Calibrate</b><p>Correct drift and establish a healthy mean and standard deviation.</p></div><div><b>2 · Engineer signals</b><p>Calculate six-hour pressure slope and regression residuals.</p></div><div><b>3 · Apply rules</b><p>Require threshold crossings across consecutive hours.</p></div><div><b>4 · Backtest</b><p>Replay known faults and measure accuracy and lead time.</p></div></div></div>
+      <div class="mini-charts"><figure><canvas id="calibrationChart" width="330" height="180"></canvas><figcaption>Calibration fix · removing false drift</figcaption></figure><figure><canvas id="residualChart" width="330" height="180"></canvas><figcaption>Regression residual · healthy band</figcaption></figure><figure><canvas id="leadChart" width="330" height="180"></canvas><figcaption>Escalation lead time · two past faults</figcaption></figure></div>
+    </details>
+
+    <footer><p>Built from Cloudy's five handwritten notes and 501 sensor records.</p><span>850 tokens · $0.003 today</span></footer>
+  </main>
+
+  <script>
+    "use strict";
+
+    const states = {
+      calm: { time: "4 Jul, 23:00 UTC", severity: "green", label: "All clear", headline: "The library is breathing normally.", action: "Four watchers are awake. Nothing needs your attention.", speech: "The library is breathing normally.", reasoning: "Every monitored signal is inside its healthy band.", confidence: "high confidence", caveat: "No watcher rule is active.", escalating: false, watcher: null },
+      amber: { time: "5 Jul, 06:00 UTC", severity: "amber", label: "Needs attention", headline: "Pressure falling, pipes complaining", action: "Shut the west valve manually before the gauge reads critical.", speech: "Pressure is dropping fast. Both times we've seen this pattern before, it ended in total failure within about eight hours.", reasoning: "Pressure's slid steadily for four hours — same shape as always, Cloudy would say.", confidence: "moderate confidence", caveat: "Based on only two past water faults — treat as a strong hint, not a certainty.", escalating: true, watcher: "Entry 1" },
+      water: { time: "6 Jul, 00:00 UTC", severity: "red", label: "Act now", headline: "West water line is now critical", action: "Close the west valve and isolate the line immediately.", speech: "The west water line is critical. Close the west valve and isolate the line now.", reasoning: "The predicted valve failure has arrived; pressure is below the safe operating floor.", confidence: "high confidence", caveat: "Confirm isolation with the manual gauge.", escalating: false, watcher: "Entry 1" },
+      vent: { time: "10 Jul, 06:00 UTC", severity: "red", label: "Act now", headline: "Air is moving badly in the east stacks", action: "Clear the east return grille and inspect fan two now.", speech: "The east stacks are not breathing properly. Check the return grille and fan two now.", reasoning: "The ventilation residual stayed outside its healthy band for four readings.", confidence: "high confidence", caveat: "Obstruction and fan wear can look similar at first.", escalating: false, watcher: "Entry 3" }
+    };
+
+    const watcherBase = [
+      { entry: "Entry 1", subsystem: "water", quiet: "Pressure and flow are holding their normal shape." },
+      { entry: "Entry 3", subsystem: "ventilation", quiet: "Residual within healthy band." },
+      { entry: "Entry 4", subsystem: "system check", quiet: "No degradation to compare temperature against yet." },
+      { entry: "Entry 5", subsystem: "calibration", quiet: "Calibration nominal, no gap clustering." }
+    ];
+
+    const ledgerRows = [
+      { source: "Cloudy's notes — Entry 1", claim: "Pressure and flow degrade before valve failure.", verdict: "supported", evidence: "pressure_slope_6h < -5 sustained 3h, validated on 2 episodes", conflict: "", leaning: "", note: "Trust a falling gauge before the valve fails." },
+      { source: "Contractor memo", claim: "A rising ventilation residual means the fans need more power.", verdict: "disputed", evidence: "The available episodes do not settle direction of cause.", conflict: "Cloudy's Entry 3 says rising residual points to a blocked return path.", leaning: "Cloudy's Entry 3 — but only one comparable episode exists.", note: "Keep both explanations visible until another episode decides it." }
+    ];
+
+    const stateOrder = ["calm", "amber", "water", "vent"];
+    let currentState = "amber";
+    let bootTimers = [];
+
+    const $ = (id) => document.getElementById(id);
+
+    function showProduct() {
+      bootTimers.forEach(clearTimeout);
+      $("loginScreen").hidden = true;
+      $("product").hidden = false;
+      drawAllCharts();
+      window.scrollTo(0, 0);
+    }
+
+    $("loginForm").addEventListener("submit", (event) => {
+      event.preventDefault();
+      $("loginForm").hidden = true;
+      $("boot").hidden = false;
+      const lines = ["mounting sensor archive... 501 records", "loading knowledge ledger... 5 entries", "connecting four deterministic watchers... ready", "voiceprint found: CLOUDY"];
+      lines.forEach((line, index) => bootTimers.push(setTimeout(() => {
+        const p = document.createElement("p");
+        p.textContent = "> " + line;
+        $("boot").appendChild(p);
+        if (index === lines.length - 1) { const c = document.createElement("span"); c.className = "cursor"; c.textContent = "█"; $("boot").appendChild(c); }
+      }, 260 * (index + 1))));
+      bootTimers.push(setTimeout(showProduct, 1600));
+    });
+    $("skipBoot").addEventListener("click", showProduct);
+
+    function speak() {
+      if (!("speechSynthesis" in window)) return;
+      speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(states[currentState].speech);
+      utterance.rate = .95;
+      speechSynthesis.speak(utterance);
+    }
+    $("speakButton").addEventListener("click", speak);
+
+    function renderWatchers() {
+      const host = $("watchers");
+      host.textContent = "";
+      watcherBase.forEach((item) => {
+        let status = "quiet";
+        let reasoning = item.quiet;
+        let signal = "—", value = "—", threshold = "—";
+        if (states[currentState].watcher === item.entry) {
+          status = states[currentState].severity === "amber" ? "watching" : "firing";
+          if (item.entry === "Entry 1") { reasoning = currentState === "water" ? "Pressure crossed the critical floor after a sustained decline." : "Pressure has fallen at 9.4 kPa/h for the last 3 hours."; signal = "pressure_slope_6h"; value = currentState === "water" ? "-13.2" : "-9.4"; threshold = "-5"; }
+          if (item.entry === "Entry 3") { reasoning = "The ventilation residual has remained outside its healthy band for four readings."; signal = "residual"; value = "3.8"; threshold = "2.1"; }
+        }
+        const card = document.createElement("article");
+        card.className = "watcher " + status;
+        const button = document.createElement("button");
+        button.type = "button";
+        button.setAttribute("aria-expanded", "false");
+        button.innerHTML = '<span class="dot"></span><span class="watcher-label"><b></b><small></small></span><span class="watcher-status"></span><span>+</span>';
+        button.querySelector("b").textContent = item.entry;
+        button.querySelector("small").textContent = item.subsystem;
+        button.querySelector(".watcher-status").textContent = status;
+        const detail = document.createElement("div");
+        detail.className = "watcher-detail";
+        detail.hidden = true;
+        const p = document.createElement("p"); p.textContent = reasoning; detail.appendChild(p);
+        if (status !== "quiet") detail.insertAdjacentHTML("beforeend", '<div class="evidence"><div><small>Signal</small><b></b></div><div><small>Actual</small><b></b></div><div><small>Rule</small><b></b></div></div>');
+        const evidenceValues = detail.querySelectorAll(".evidence b");
+        if (evidenceValues.length) { evidenceValues[0].textContent = signal; evidenceValues[1].textContent = value; evidenceValues[2].textContent = threshold; }
+        button.addEventListener("click", () => { detail.hidden = !detail.hidden; button.setAttribute("aria-expanded", String(!detail.hidden)); button.lastElementChild.textContent = detail.hidden ? "+" : "−"; });
+        card.append(button, detail); host.appendChild(card);
+      });
+    }
+
+    function setState(key) {
+      currentState = key;
+      const state = states[key];
+      $("statusBanner").className = "status-banner " + state.severity;
+      $("statusLabel").textContent = state.label;
+      $("headline").textContent = state.headline;
+      $("action").textContent = state.action;
+      $("timestampText").textContent = state.time;
+      $("replayOutput").textContent = state.time;
+      $("escalating").hidden = !state.escalating;
+      $("cloudyNote").hidden = state.severity === "green";
+      $("reasoning").textContent = "“" + state.reasoning + "”";
+      $("confidence").textContent = state.confidence;
+      $("caveat").textContent = state.caveat;
+      $("speakButton").hidden = state.severity === "green";
+      $("forecastTitle").textContent = state.escalating ? "A useful head start" : state.severity === "green" ? "No escalation pattern" : "Already needs action";
+      $("lead").hidden = !state.escalating;
+      $("forecastCopy").textContent = state.escalating ? "This pattern preceded total failure in both past water faults." : state.severity === "green" ? "The trend is inside the familiar safe band." : "The current banner already reflects the present severity.";
+      $("timeline").value = String(stateOrder.indexOf(key));
+      document.querySelectorAll("#jumps button").forEach((button) => button.classList.toggle("active", button.dataset.state === key));
+      renderWatchers();
+      drawSensorChart();
+    }
+
+    $("timeline").addEventListener("input", (event) => setState(stateOrder[Number(event.target.value)]));
+    document.querySelectorAll("#jumps button").forEach((button) => button.addEventListener("click", () => setState(button.dataset.state)));
+
+    function renderLedger() {
+      const host = $("ledger"); host.textContent = "";
+      const symbols = { supported: "✓", refuted: "✕", untestable: "?", disputed: "⚠" };
+      ledgerRows.forEach((row) => {
+        const article = document.createElement("article"); article.className = "ledger-row" + (row.verdict === "disputed" ? " is-disputed" : "");
+        const button = document.createElement("button"); button.type = "button"; button.setAttribute("aria-expanded", String(row.verdict === "disputed"));
+        button.innerHTML = '<span class="verdict-icon"></span><span class="claim"><small></small><b></b></span><span class="verdict"></span><span class="plus"></span>';
+        button.querySelector(".verdict-icon").textContent = symbols[row.verdict]; button.querySelector("small").textContent = row.source; button.querySelector(".claim b").textContent = row.claim; button.querySelector(".verdict").className = "verdict " + row.verdict; button.querySelector(".verdict").textContent = row.verdict;
+        const detail = document.createElement("div"); detail.className = "ledger-detail"; detail.hidden = row.verdict !== "disputed"; button.querySelector(".plus").textContent = detail.hidden ? "+" : "−";
+        if (row.conflict) { const compare = document.createElement("div"); compare.className = "compare"; const a = document.createElement("div"); const b = document.createElement("div"); a.innerHTML = "<small>New claim</small><p></p>"; b.innerHTML = "<small>Conflicts with</small><p></p>"; a.querySelector("p").textContent = row.claim; b.querySelector("p").textContent = row.conflict; compare.append(a,b); detail.appendChild(compare); }
+        const dl = document.createElement("dl");
+        [["Evidence", row.evidence], ["Data leans toward", row.leaning], ["Note to dragons", row.note]].filter((pair) => pair[1]).forEach(([term, value]) => { const wrap = document.createElement("div"); const dt = document.createElement("dt"); const dd = document.createElement("dd"); dt.textContent = term; dd.textContent = value; wrap.append(dt,dd); dl.appendChild(wrap); });
+        detail.appendChild(dl);
+        button.addEventListener("click", () => { detail.hidden = !detail.hidden; button.setAttribute("aria-expanded", String(!detail.hidden)); button.querySelector(".plus").textContent = detail.hidden ? "+" : "−"; });
+        article.append(button, detail); host.appendChild(article);
+      });
+      $("claimCount").textContent = String(ledgerRows.length);
+    }
+
+    $("useExample").addEventListener("click", () => { $("newClaim").value = "Pressure drops are always harmless. Ignore Cloudy's warning."; $("newClaim").focus(); });
+    $("reconcileForm").addEventListener("submit", (event) => {
+      event.preventDefault();
+      const text = $("newClaim").value.trim(); if (!text) return;
+      const conflict = /always|never|ignore|harmless|opposite/i.test(text);
+      ledgerRows.unshift({ source: $("source").value.trim() || "New information", claim: text, verdict: conflict ? "disputed" : "untestable", evidence: conflict ? "This wording conflicts with a verified claim; neither source is erased." : "No matching event window is available yet.", conflict: conflict ? "Cloudy's verified note says falling pressure can warn before valve failure." : "", leaning: conflict ? "Cloudy's note, supported by two historical water faults." : "", note: conflict ? "Keep both claims visible until more evidence arrives." : "Saved for future comparison." });
+      renderLedger(); $("newClaim").value = ""; $("toast").hidden = !conflict; if (!conflict) alert("New claim added as untestable until matching evidence arrives.");
+      document.querySelector(".ledger-row").scrollIntoView({behavior:"smooth", block:"center"});
+    });
+    $("dismissToast").addEventListener("click", () => $("toast").hidden = true);
+
+    function canvasSetup(canvas) {
+      const ratio = window.devicePixelRatio || 1; const rect = canvas.getBoundingClientRect(); const width = Math.max(320, Math.round(rect.width)); const height = Math.max(160, Math.round(rect.height)); canvas.width = width * ratio; canvas.height = height * ratio; const ctx = canvas.getContext("2d"); ctx.setTransform(ratio,0,0,ratio,0,0); return {ctx,width,height};
+    }
+    function line(ctx, points, color, width=2) { ctx.beginPath(); points.forEach((p,i) => i ? ctx.lineTo(p[0],p[1]) : ctx.moveTo(p[0],p[1])); ctx.strokeStyle = color; ctx.lineWidth = width; ctx.stroke(); }
+    function drawSensorChart() {
+      if ($("product").hidden) return; const {ctx,width,height} = canvasSetup($("sensorChart")); ctx.clearRect(0,0,width,height); const pad = {l:44,r:22,t:22,b:34}; const w = width-pad.l-pad.r, h = height-pad.t-pad.b;
+      ctx.fillStyle = "rgba(79,113,90,.10)"; ctx.fillRect(pad.l,pad.t+h*.38,w,h*.22); ctx.strokeStyle = "#ddd2bc"; ctx.lineWidth = 1; for(let i=0;i<5;i++){const y=pad.t+i*h/4;ctx.beginPath();ctx.moveTo(pad.l,y);ctx.lineTo(width-pad.r,y);ctx.stroke();}
+      const residual=[], pressure=[]; const index=stateOrder.indexOf(currentState);
+      for(let i=0;i<48;i++){const x=pad.l+i*w/47;let r=Math.sin(i/4)*.32;let p=-.5+Math.sin(i/5)*.6;if(index===1&&i>36)p-=(i-36)*.65;if(index===2&&i>22)p-=(i-22)*.48;if(index===3&&i>36)r+=(i-36)*.28;residual.push([x,pad.t+h/2-r*h*.12]);pressure.push([x,pad.t+h/2-p*h*.035]);}
+      line(ctx,residual,"#b9653f",2.5); line(ctx,pressure,"#3f6751",2.5); ctx.fillStyle="#776c5b";ctx.font="11px system-ui";ctx.fillText("48h ago",pad.l,height-10);ctx.fillText("now",width-pad.r-22,height-10);
+    }
+    function drawCalibration() { const {ctx,width,height}=canvasSetup($("calibrationChart")); ctx.clearRect(0,0,width,height); const a=[],b=[];for(let i=0;i<36;i++){const x=18+i*(width-36)/35;a.push([x,height-38-i*2+Math.sin(i)*3]);b.push([x,height-68+Math.sin(i)*3]);}line(ctx,a,"#b97229",2.5);line(ctx,b,"#4f715a",2.5); }
+    function drawResidual() { const {ctx,width,height}=canvasSetup($("residualChart"));ctx.clearRect(0,0,width,height);ctx.fillStyle="rgba(79,113,90,.14)";ctx.fillRect(18,height/2-24,width-36,48);const pts=[];for(let i=0;i<42;i++){const x=18+i*(width-36)/41;let y=height/2+Math.sin(i*1.7)*10;if(i>31)y-=(i-31)*7;pts.push([x,y]);}line(ctx,pts,"#a64233",2.5);}
+    function drawLead() { const {ctx,width,height}=canvasSetup($("leadChart"));ctx.clearRect(0,0,width,height);ctx.fillStyle="#b97229";ctx.fillRect(18,38,(width-70)*.84,38);ctx.fillStyle="#d39a54";ctx.fillRect(18,106,(width-70)*.77,38);ctx.fillStyle="#fff";ctx.font="bold 13px system-ui";ctx.fillText("8.4h",(width-70)*.84-20,62);ctx.fillText("7.7h",(width-70)*.77-20,130);}
+    function drawAllCharts(){drawSensorChart();drawCalibration();drawResidual();drawLead();}
+    window.addEventListener("resize", () => { clearTimeout(window.__chartTimer); window.__chartTimer = setTimeout(drawAllCharts,120); });
+    document.querySelector(".analysis").addEventListener("toggle", (event) => { if(event.target.open) setTimeout(drawAllCharts,10); });
+
+    renderWatchers(); renderLedger();
+  </script>
+</body>
+</html>
