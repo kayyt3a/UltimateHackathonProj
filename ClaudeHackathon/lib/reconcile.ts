@@ -7,7 +7,15 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { LedgerRow, Verdict } from "./types";
 
-const MODEL = process.env.RECONCILE_MODEL ?? "claude-sonnet-5";
+// Claude Opus 5 is the current default model. Override with RECONCILE_MODEL if
+// you want to trade capability for cost — but that's a deliberate choice, and
+// this agent's whole job is adjudicating contradictory evidence.
+const MODEL = process.env.RECONCILE_MODEL ?? "claude-opus-5";
+
+// Thinking is ON BY DEFAULT on Opus 5, and max_tokens caps thinking AND the
+// response text together. The old 1024 was sized for the JSON alone and would
+// now truncate mid-verdict.
+const MAX_TOKENS = 8000;
 
 let _client: Anthropic | null = null;
 function client(): Anthropic {
@@ -141,7 +149,7 @@ export async function runReconciliationAgent(input: ReconcileInput): Promise<Raw
 
   const message = await client().messages.create({
     model: MODEL,
-    max_tokens: 1024,
+    max_tokens: MAX_TOKENS,
     messages: [{ role: "user", content: prompt }],
   });
 

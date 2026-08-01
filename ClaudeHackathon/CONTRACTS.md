@@ -57,19 +57,31 @@ Thresholds live at the top of `lib/watchers.ts` as named constants.
   a demo-losing move. Person C: this means severity is already gap-aware,
   don't discount it a second time.
 
-### ⚠️ Open question for Person A — affects Entry 3
+### ✅ Resolved — the Entry 3 baseline question
 
-The spec's baseline gives `residual` std = 0.0006, and the spec's own example
-record for `2026-07-05T06:00Z` gives `residual = -0.021`. That is **35 standard
-deviations** from healthy — yet the spec also requires Entry 3 to read `quiet`
-at that hour. Both cannot be true.
+Earlier I flagged that `residual = -0.021` sat 35σ from a baseline std of
+0.0006, contradicting the requirement that Entry 3 read `quiet` there.
 
-The code currently follows the spec (absolute −0.5 threshold, so `quiet`) and
-the agreed fixture test passes. But either the healthy band is much wider than
-0.0006, or −0.021 is already a real ventilation anomaly. **Person A needs to
-settle this before judging** — if it's the latter, Entry 3 is currently missing
-genuine faults. `reasoning` reports the σ distance so the discrepancy stays
-visible rather than buried.
+**Real data settles it.** `prepared_data.json` gives residual std = **0.01504**,
+not 0.0006 — the figure in the original brief was illustrative, not measured.
+At the real std, −0.021 is ~1.4σ: entirely ordinary. Fault residuals sit near
+−1.0 (`faulty_mean = -1.00001`) against a healthy mean of −0.00109, with the
+threshold at −0.5006 midway between. `quiet` was correct.
+
+Verified across the whole month: **zero false positives on all 368 stable
+hours**, and Entry 3 fires inside both ventilation episodes.
+
+### Data notes that bite
+
+- **`pressure_slope_6h` is `null`** for the first 5 rows — a 6-hour slope is
+  undefined until 6 hours exist. The type is `number | null`. Coercing null to
+  0 invents a "stable pressure" reading nobody measured; Entry 1 reports the
+  undefined state explicitly instead.
+- **`listener_validation` is 0.952, not 1.0.** `normal→stable` and `hum→warning`
+  are clean, but `rattle` covers *both* `critical` (24) and `failed` (24), so
+  sound cannot separate those two. 476/500. Still leakage — sound adds nothing
+  `system_status` doesn't already carry, at the same timestamp — but don't put
+  "1.0" on a slide.
 
 ## 2. Live reconciliation — `POST /api/reconcile`
 

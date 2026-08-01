@@ -2,21 +2,31 @@
 // The window/record shape is owned by Person A's export (getWindow); this is
 // the contract we've agreed on until their code lands.
 
+// Matches prepared_data.json exactly (Person A's prepare_data.py output).
 export interface SensorRecord {
   timestamp: string;
   power_kw: number;
   airflow_m3s: number;
   airflow_corrected: number;
   water_pressure_kpa: number;
+  water_pressure_corrected: number;
   water_flow_lps: number;
+  water_flow_corrected: number;
   temperature_c: number;
   vibration_level: number;
-  sound_event: string;
-  system_status: string;
-  sensor_source: string;
+  sound_event: "normal" | "hum" | "rattle";
+  system_status: "stable" | "warning" | "critical" | "failed";
+  sensor_source: "original" | "barry_j_";
   is_gap_filled: boolean;
   residual: number;
-  pressure_slope_6h: number;
+  /**
+   * NULL for the first 5 rows — a 6-hour slope is undefined until 6 hours of
+   * history exist. Every consumer must handle null; treating it as 0 would
+   * invent a "stable pressure" reading that was never measured.
+   */
+  pressure_slope_6h: number | null;
+  novelty_score: number;
+  is_novel: boolean;
 }
 
 export interface BaselineStat {

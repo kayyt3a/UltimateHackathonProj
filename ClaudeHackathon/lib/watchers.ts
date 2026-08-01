@@ -3,7 +3,7 @@
 // Entry 2 is computed separately as listener_validation (see brief: using
 // sound_event as a detector is leakage, since it maps 1:1 onto system_status).
 
-import { getWindow } from "./fixtures";
+import { getWindow } from "./data";
 import {
   ListenerValidation,
   SensorRecord,
@@ -98,38 +98,49 @@ function checkEntry1(window: WindowData, timestamp: string): WatcherResult {
 
   const windowStart = Math.max(0, idx - (PRESSURE_SUSTAIN_HOURS - 1));
   const lastN = records.slice(windowStart, idx + 1);
+
+  // pressure_slope_6h is null for the first 5 rows of the dataset — a 6-hour
+  // slope is undefined until 6 hours exist. Null is "not measured", which is
+  // not the same as "stable", so the watcher reports that state explicitly
+  // rather than coercing it to a number.
+  const slope = current.pressure_slope_6h;
   const sustainedFiring =
     lastN.length === PRESSURE_SUSTAIN_HOURS &&
-    lastN.every((r) => r.pressure_slope_6h < PRESSURE_FIRING_THRESHOLD);
+    lastN.every((r) => r.pressure_slope_6h !== null && r.pressure_slope_6h < PRESSURE_FIRING_THRESHOLD);
 
   let rawStatus: WatcherStatus;
   if (sustainedFiring) {
     rawStatus = "firing";
-  } else if (current.pressure_slope_6h < PRESSURE_WATCHING_THRESHOLD) {
+  } else if (slope !== null && slope < PRESSURE_WATCHING_THRESHOLD) {
     rawStatus = "watching";
   } else {
     rawStatus = "quiet";
   }
 
   const deciding = sustainedFiring ? lastN : [current];
-  const evidence: WatcherEvidence[] = deciding.map((r) => ({
-    hour: r.timestamp,
-    signal: "pressure_slope_6h",
-    value: r.pressure_slope_6h,
-    threshold: PRESSURE_FIRING_THRESHOLD,
-  }));
+  const evidence: WatcherEvidence[] = deciding
+    .filter((r) => r.pressure_slope_6h !== null)
+    .map((r) => ({
+      hour: r.timestamp,
+      signal: "pressure_slope_6h",
+      value: r.pressure_slope_6h as number,
+      threshold: PRESSURE_FIRING_THRESHOLD,
+    }));
 
   let rawReasoning: string;
   if (rawStatus === "firing") {
-    rawReasoning = `Pressure has fallen at ${Math.abs(current.pressure_slope_6h).toFixed(
+    rawReasoning = `Pressure has fallen at ${Math.abs(slope as number).toFixed(
       1
     )} kPa/h for the last ${PRESSURE_SUSTAIN_HOURS} hours.`;
   } else if (rawStatus === "watching") {
-    rawReasoning = `Pressure is declining (${current.pressure_slope_6h.toFixed(
+    rawReasoning = `Pressure is declining (${(slope as number).toFixed(
       1
     )} kPa/h) but hasn't sustained past -${Math.abs(PRESSURE_FIRING_THRESHOLD)} kPa/h for ${PRESSURE_SUSTAIN_HOURS} hours yet.`;
+  } else if (slope === null) {
+    rawReasoning =
+      "Pressure slope is not yet defined — fewer than 6 hours of history at this point in the record.";
   } else {
-    rawReasoning = `Pressure slope is stable at ${current.pressure_slope_6h.toFixed(1)} kPa/h.`;
+    rawReasoning = `Pressure slope is stable at ${slope.toFixed(1)} kPa/h.`;
   }
 
   const { status, reasoning } = downgradeIfGapFilled(rawStatus, deciding, rawReasoning);
@@ -200,7 +211,8 @@ function checkEntry3(window: WindowData, timestamp: string): WatcherResult {
 // just proved (again) it is not an early warning signal" — not danger.
 
 function hasDegradation(r: SensorRecord): boolean {
-  return r.pressure_slope_6h < PRESSURE_FIRING_THRESHOLD || r.residual < RESIDUAL_FIRING_THRESHOLD;
+  const slopeBad = r.pressure_slope_6h !== null && r.pressure_slope_6h < PRESSURE_FIRING_THRESHOLD;
+  return slopeBad || r.residual < RESIDUAL_FIRING_THRESHOLD;
 }
 
 function checkEntry4(window: WindowData, timestamp: string): WatcherResult {
@@ -383,9 +395,11 @@ function computeListenerValidation(window: WindowData, timestamp: string): Liste
   };
 }
 
-export function checkAllWatchers(timestamp: string): WatcherReport {
-  const window = getWindow(timestamp);
-
+/**
+ * Runs every watcher against an already-loaded window. Exported so the tests
+ * can drive hand-built fixtures without touching the real dataset.
+ */
+export function checkWindow(window: WindowData, timestamp: string): WatcherReport {
   return {
     watchers: [
       checkEntry1(window, timestamp),
@@ -395,6 +409,11 @@ export function checkAllWatchers(timestamp: string): WatcherReport {
     ],
     listener_validation: computeListenerValidation(window, timestamp),
   };
+}
+
+/** Production entry point — loads the real window, then runs every watcher. */
+export function checkAllWatchers(timestamp: string): WatcherReport {
+  return checkWindow(getWindow(timestamp), timestamp);
 }
 
 // Exported for targeted testing / reuse by the aggregator if it wants

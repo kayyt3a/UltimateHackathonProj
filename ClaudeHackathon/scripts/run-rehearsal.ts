@@ -5,6 +5,8 @@
 // Checks that the refuting note comes back refuted-and-conflicting-with-
 // entry_3, and the confirming note comes back supported.
 
+import { describeKeyProblem } from "./load-env";
+
 const BASE_URL = process.env.REHEARSAL_BASE_URL ?? "http://localhost:3000";
 
 interface RehearsalCase {
@@ -68,25 +70,29 @@ async function preflight() {
         `    npm.cmd run dev\n\n` +
         `Then re-run this script.\n`
     );
-    process.exit(1);
+    process.exitCode = 1;
+    return false;
   }
 
-  if (!process.env.ANTHROPIC_API_KEY) {
+  // The key this script sees is not the one that matters — the dev server makes
+  // the API call and reads .env.local at boot. This check catches the local
+  // mistakes early; a genuine auth failure still surfaces as a 502.
+  const keyProblem = describeKeyProblem();
+  if (keyProblem) {
     console.error(
-      `\nANTHROPIC_API_KEY is not set in this shell.\n\n` +
-        `The rehearsal makes real model calls, so every case would come back\n` +
-        `as a 502. Set it first:\n\n` +
-        `    $env:ANTHROPIC_API_KEY = "sk-ant-..."      # PowerShell\n` +
-        `    export ANTHROPIC_API_KEY=sk-ant-...        # Git Bash\n\n` +
-        `Note the dev server reads the key from ITS OWN shell, not this one —\n` +
-        `set it there too, or put it in a .env.local file before starting it.\n`
+      `\n${keyProblem}\n` +
+        `Note: the dev server reads .env.local when it STARTS. If you edited the\n` +
+        `file after launching it, restart the server before re-running.\n`
     );
-    process.exit(1);
+    process.exitCode = 1;
+    return false;
   }
+
+  return true;
 }
 
 async function main() {
-  await preflight();
+  if (!(await preflight())) return;
 
   for (const c of CASES) {
     console.log(`\n--- ${c.name} ---`);
@@ -109,10 +115,13 @@ async function main() {
   }
 
   console.log(`\n${failures === 0 ? "REHEARSAL CLEAN" : `${failures} REHEARSAL FAILURE(S)`}`);
-  process.exit(failures === 0 ? 0 : 1);
+  // Set the code and let Node drain naturally. Calling process.exit() here
+  // tears down sockets mid-close and trips a libuv assertion on Windows:
+  //   Assertion failed: !(handle->flags & UV_HANDLE_CLOSING), src\win\async.c
+  process.exitCode = failures === 0 ? 0 : 1;
 }
 
 main().catch((err) => {
   console.error(err);
-  process.exit(1);
+  process.exitCode = 1;
 });

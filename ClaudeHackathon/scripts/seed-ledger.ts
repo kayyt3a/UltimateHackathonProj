@@ -7,6 +7,8 @@
 // expected verdicts from the project brief before calling seeding done.
 // Run with `npm run seed:ledger` (requires ANTHROPIC_API_KEY).
 
+// Must come first — populates process.env before the Anthropic client is built.
+import { describeKeyProblem } from "./load-env";
 import { reconcileClaim } from "../lib/reconcile";
 import { getStatsForClaim } from "../lib/stats";
 import { writeLedger } from "../lib/ledger";
@@ -20,45 +22,97 @@ interface CloudyNote {
   expectedVerdicts: Verdict[];
 }
 
+// Verbatim from cloudys_logs.md. Do not paraphrase — the whole exercise is
+// testing what Cloudy actually wrote, not a tidied-up restatement of it.
 const CLOUDY_NOTES: CloudyNote[] = [
   {
     id: "entry_1",
     statsKey: "entry_1",
-    label: "Cloudy's notes — Entry 1",
-    text: "The pipes always complain before they break. Watch the water pressure — when it starts falling steady, not spiking, you've got hours before something gives.",
+    label: "Cloudy's notes — Entry 1: The pipes are getting old",
+    text: `The water system has always been a reliable old friend, but I have noticed something strange. The valves rarely fail without warning. The pipes seem to complain first.
+
+A small drop in pressure here. A weaker flow there.
+
+The younger dragons keep asking why I check the pressure gauge so often. They think I am being overly cautious.
+
+They will understand someday.
+
+Note to self: check the pressure readings before trusting the valves.`,
     expectedVerdicts: ["supported"],
   },
   {
     id: "entry_3",
     statsKey: "entry_3",
-    label: "Cloudy's notes — Entry 3",
-    text: "When the fans start running in circles — same power draw, less air moving — that's the ventilation system fighting something upstream. Catch it in the numbers before you hear it.",
+    label: "Cloudy's notes — Entry 3: The fans are working harder",
+    text: `Something is wrong with the ventilation system.
+
+When the system is healthy, there is a linear relationship between power and airflow.
+Any deviation from this indicates poor health.
+
+It is almost as if the machines are running in circles — working harder but achieving less.
+
+I have checked the power readings twice now. The numbers are telling a story, but I have not yet found the right way to read it.`,
     expectedVerdicts: ["supported"],
   },
   {
     id: "entry_4",
     statsKey: "entry_4",
-    label: "Cloudy's notes — Entry 4",
-    text: "Cold arrives later. By the time you feel it in the room, the machine's been struggling for hours — temperature is the last sign, not the first. Don't trust it as an early warning.",
+    label: "Cloudy's notes — Entry 4: A cold night reminder",
+    text: `The shelter depends on the ventilation system more than most dragons realise.
+
+When airflow drops, the temperature does not immediately change. The cold arrives later.
+
+Anyone watching only the temperature will notice the problem too late.
+
+The first signs are elsewhere.`,
     expectedVerdicts: ["refuted"],
   },
   {
     id: "entry_5",
     statsKey: "entry_5",
-    label: "Cloudy's notes — Entry 5",
-    text: "Missing pieces tell you something too. When a sensor drops out and comes back gap-filled, that's not nothing — the gaps themselves are trying to tell you the system's confused.",
-    expectedVerdicts: ["untestable", "refuted"],
+    label: "Cloudy's notes — Entry 5: Missing pieces",
+    text: `The Giant Peacock damaged more than just the machines.
+
+Some sensors now go silent without warning.
+
+Do not assume an empty space means nothing happened.
+
+Sometimes missing information is itself a clue.`,
+    // Notebook records this as UNSUPPORTED: 6 gaps, scattered, no clustering.
+    // "refuted" is the closest verdict; "untestable" is defensible on n=6.
+    expectedVerdicts: ["refuted", "untestable"],
   },
   {
     id: "entry_2",
     statsKey: "entry_2",
-    label: "Cloudy's notes — Entry 2",
-    text: "The library has a rhythm you can hear before you can measure it. When the young ones get restless and the hum changes, trust their ears — they know something's wrong before the sensors log it.",
-    expectedVerdicts: ["supported"],
+    label: "Cloudy's notes — Entry 2: The library has a rhythm",
+    text: `Every machine has its own voice.
+
+The ventilation fans have a steady hum when they are happy. When they are struggling, the sound changes.
+
+A little vibration. A different pitch. A rattle that was not there yesterday.
+
+The dragons who listen to the machinery may not understand the engineering, but they notice things that sensors sometimes miss.
+
+Perhaps both should be listened to.`,
+    // Nuanced: the sound DOES track system health (so the descriptive claim
+    // holds), but "notice things that sensors miss" does not — sound is a
+    // redescription of system_status, recorded at the same hour. Either
+    // verdict is defensible provided note_to_dragons captures "true, but it
+    // tells you nothing the sensors didn't already say."
+    expectedVerdicts: ["supported", "refuted"],
   },
 ];
 
 async function main() {
+  // Fail fast with an actionable message instead of a raw SDK auth stack trace.
+  const keyProblem = describeKeyProblem();
+  if (keyProblem) {
+    console.error(`\n${keyProblem}`);
+    process.exitCode = 1;
+    return;
+  }
+
   const ledger: LedgerRow[] = [];
   const evalResults: { id: string; verdict: Verdict; expected: Verdict[]; pass: boolean }[] = [];
 
@@ -102,10 +156,12 @@ async function main() {
   );
 
   console.log(`\n${allPass ? "ALL VERDICTS MATCH EXPECTATIONS" : "SOME VERDICTS DID NOT MATCH — review above"}`);
-  process.exit(allPass ? 0 : 1);
+  // process.exitCode, not process.exit() — exiting while sockets are mid-close
+  // trips a libuv assertion on Windows.
+  process.exitCode = allPass ? 0 : 1;
 }
 
 main().catch((err) => {
   console.error(err);
-  process.exit(1);
+  process.exitCode = 1;
 });
