@@ -165,7 +165,7 @@ export function normaliseWatcherBundle(raw: unknown): NormalisedBundle {
   } else {
     const accuracy = Number(lv.accuracy_vs_system_status);
     listener_validation = {
-      entry: canonicalEntry(lv.entry) ?? "Entry 2",
+      entry: (canonicalEntry(lv.entry) ?? "Entry 2") as "Entry 2",
       accuracy_vs_system_status: Number.isNaN(accuracy) ? 0 : accuracy,
       note: typeof lv.note === "string" ? lv.note : "",
     };

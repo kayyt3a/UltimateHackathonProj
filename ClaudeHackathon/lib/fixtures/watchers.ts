@@ -20,7 +20,7 @@ import type { WatcherBundle } from "../types";
  *                          it has no rule and never fires.
  */
 
-const LISTENER_VALIDATION = {
+const LISTENER_VALIDATION: WatcherBundle["listener_validation"] = {
   entry: "Entry 2",
   accuracy_vs_system_status: 1.0,
   // Person A: sound_event maps 1:1 onto system_status, zero off-diagonal.

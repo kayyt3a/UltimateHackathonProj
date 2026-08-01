@@ -1,9 +1,9 @@
 import { aggregate, faultWatchers, severityWarnings } from "./aggregate";
 import { readCache, writeCache } from "./cache";
 import { estimateCostUsd } from "./cost";
-import { readCurrentLedgerChecked } from "./ledger";
+import { readCurrentLedgerChecked } from "./ledger-reader";
 import type { DiagnoseResponse, LedgerEntry } from "./types";
-import { getWatchersChecked } from "./watchers";
+import { getWatchersChecked } from "./watcher-adapter";
 import { VOICE_MODEL, enforceHonesty, voice } from "./voice";
 import type { Diagnosis, WatcherOutput } from "./types";
 

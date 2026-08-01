@@ -1,13 +1,13 @@
+import { getRecordAt } from "./data";
 import type { WatcherBundle } from "./types";
-import { USING_FIXTURE, checkAllWatchers } from "./watchers-impl";
+import { checkAllWatchers } from "./watchers";
 import { normaliseWatcherBundle } from "./contract";
-import { canonicalTimestamp } from "./sensor-window";
+
 
 /**
  * Thin wrapper over Person B's `checkAllWatchers(timestamp)`.
  *
- * The swap happens in `lib/watchers-impl.ts` — that file is the single
- * integration point. Everything downstream (the route, the prewarm script, the
+ * Person B owns `lib/watchers.ts`; Person A owns `lib/data.ts` underneath it. Everything downstream (the route, the prewarm script, the
  * Voice agent) goes through `getWatchers` and is unaffected by the swap.
  *
  * Output is normalised at this boundary so a naming mismatch surfaces as a
@@ -32,5 +32,17 @@ export async function getWatchers(timestamp: string): Promise<WatcherBundle> {
 
 /** True while running against the hardcoded fixture rather than Person B's code. */
 export function isUsingFixture(): boolean {
-  return USING_FIXTURE;
+  return false;
+}
+
+/**
+ * Person B's watchers index records with an exact string compare, so
+ * "2026-07-05T06:00:00.000Z" misses a record stored as "2026-07-05T06:00:00Z"
+ * and throws. Resolve to the dataset's own spelling first.
+ */
+function canonicalTimestamp(timestamp: string): string {
+  const target = new Date(timestamp).getTime();
+  if (Number.isNaN(target)) return timestamp;
+  const hit = getRecordAt(timestamp);
+  return hit && new Date(hit.timestamp).getTime() === target ? hit.timestamp : timestamp;
 }

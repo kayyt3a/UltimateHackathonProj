@@ -112,7 +112,7 @@ export function rulePredictedEscalation(
 }
 
 export interface ScopeRuling {
-  subsystem_scope: Subsystem;
+  subsystem_scope: "water" | "ventilation";
   mode: Mode;
   entry_cited: string;
   reason: string;

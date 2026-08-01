@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { aggregate, faultWatchers } from "@/lib/aggregate";
-import { getWatchers } from "@/lib/watchers";
+import { getWatchers } from "@/lib/watcher-adapter";
 import { cacheKey, DEMO_TIMESTAMPS } from "@/lib/cache";
 import { estimateCostUsd, ratesFor } from "@/lib/cost";
-import { readCurrentLedger } from "@/lib/ledger";
+import { readCurrentLedger } from "@/lib/ledger-reader";
 
 /**
  * Regression guard: a timestamp that misses the watcher lookup used to fall

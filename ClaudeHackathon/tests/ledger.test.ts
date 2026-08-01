@@ -2,7 +2,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest
 import { promises as fs } from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { readCurrentLedger } from "@/lib/ledger";
+import { readCurrentLedger } from "@/lib/ledger-reader";
 import { isDisputed, disputedLedgerEntries } from "@/lib/escalation";
 import { FIXTURES } from "@/lib/fixtures/watchers";
 

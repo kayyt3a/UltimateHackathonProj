@@ -8,8 +8,8 @@
  */
 import { aggregate } from "../lib/aggregate";
 import { rulePredictedEscalation, ruleScope, disputedLedgerEntries } from "../lib/escalation";
-import { readCurrentLedger } from "../lib/ledger";
-import { getWatchers } from "../lib/watchers";
+import { readCurrentLedger } from "../lib/ledger-reader";
+import { getWatchers } from "../lib/watcher-adapter";
 import { buildVoicePrompt, voice, VOICE_MODEL } from "../lib/voice";
 import { estimateCostUsd } from "../lib/cost";
 

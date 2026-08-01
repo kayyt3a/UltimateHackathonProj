@@ -14,7 +14,7 @@
 import { aggregate, faultWatchers } from "../lib/aggregate";
 import { DEMO_TIMESTAMPS } from "../lib/cache";
 import { rulePredictedEscalation, ruleScope } from "../lib/escalation";
-import { getWatchersChecked, isUsingFixture } from "../lib/watchers";
+import { getWatchersChecked, isUsingFixture } from "../lib/watcher-adapter";
 
 const EXPECTED_SEVERITY: Record<string, string> = {
   "2026-07-04T23:00:00Z": "green",

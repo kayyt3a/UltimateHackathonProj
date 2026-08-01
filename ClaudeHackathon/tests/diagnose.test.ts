@@ -31,9 +31,8 @@ vi.mock("@/lib/voice", async (importOriginal) => ({
   voice: voiceMock,
 }));
 
-vi.mock("@/lib/watchers-impl", () => ({
+vi.mock("@/lib/watchers", () => ({
   checkAllWatchers: watchersMock,
-  USING_FIXTURE: true,
 }));
 
 const { checkAllWatchers: fixtureWatchers } = await import("@/lib/fixtures/watchers");

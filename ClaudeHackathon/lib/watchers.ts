@@ -3,7 +3,7 @@
 // Entry 2 is computed separately as listener_validation (see brief: using
 // sound_event as a detector is leakage, since it maps 1:1 onto system_status).
 
-import { getWindow } from "./fixtures";
+import { getWindow } from "./watcher-window";
 import {
   ListenerValidation,
   SensorRecord,

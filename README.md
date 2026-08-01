@@ -117,20 +117,39 @@ Possible values:
 Description:
 Identifies the source of sensor readings. Barry J sensor readings
 contain a small consistent calibration offset (find it and remove it!).
+
 ---
 
 ## The application
 
-This repository also contains **Cloudy's Second Opinion**, the Next.js app built
-on this dataset.
+**Cloudy's Second Opinion** lives in **`ClaudeHackathon/`** — one Next.js app
+containing all four slices:
 
-- **`docs/person-c-api.md`** — the severity aggregator, the Voice agent and the
-  `/api/diagnose` contract (Person C).
-- **`verdicts.md`** — which of Cloudy's five notes the data actually supports
-  (Person A).
+| Slice | Where |
+| --- | --- |
+| Person A — data layer, analysis | `ClaudeHackathon/lib/data.ts`, `prepared_data.json`, `verdicts.md` |
+| Person B — watchers, reconciliation agent | `ClaudeHackathon/lib/watchers.ts`, `app/api/reconcile` |
+| Person C — severity, Voice agent, API | `ClaudeHackathon/lib/{aggregate,voice,diagnose}.ts`, `app/api/diagnose` |
+| Person D — interface | `ClaudeHackathon/app/page.tsx`, `docs/ui-mockup.html` |
+
+### Run it
 
 ```bash
+cd ClaudeHackathon
 npm install
-npm test                  # no API key needed
-npm run dev               # http://localhost:3000/api/diagnose?ts=2026-07-05T06:00:00Z
+npm run dev            # http://localhost:3000
+```
+
+Optional — Cloudy only speaks with a key:
+
+```bash
+export ANTHROPIC_API_KEY=sk-ant-...
+npm run prewarm        # fills the demo cache with real briefings
+```
+
+### Check it
+
+```bash
+npm test               # 309 tests, no API key needed
+npm run verify:watchers    # severity/scope/escalation for each demo hour
 ```

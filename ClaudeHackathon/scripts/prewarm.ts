@@ -14,7 +14,7 @@
  */
 import { DEMO_TIMESTAMPS, cachePath, writeCache } from "../lib/cache";
 import { diagnose } from "../lib/diagnose";
-import { isUsingFixture } from "../lib/watchers";
+import { isUsingFixture } from "../lib/watcher-adapter";
 
 async function main() {
   const args = process.argv.slice(2).filter((a) => !a.startsWith("-"));
