@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc *)",
+      "Bash(npx tsx -e ' *)",
+      "Bash(npx tsx *)",
+      "Bash(npx next *)",
+      "Bash(echo \"--- typecheck exit: $? ---\")",
+      "Bash(curl -s http://localhost:3000/api/reconcile)",
+      "Bash(curl -s -w \"\\\\nHTTP %{http_code}\\\\n\" -X POST http://localhost:3000/api/reconcile -H \"Content-Type: application/json\" -d '{\"source_label\":\"test\"}')",
+      "Bash(curl -s -w \"\\\\nHTTP %{http_code}\\\\n\" -X POST http://localhost:3000/api/reconcile -H \"Content-Type: application/json\" -d 'not json')",
+      "Bash(python -c ' *)",
+      "Bash(curl -s -w \"\\\\nHTTP %{http_code}\\\\n\" -X POST http://localhost:3000/api/reconcile -H \"Content-Type: application/json\" -d '{\"source_label\":\"Archived repair note \\(submitted live\\)\",\"text\":\"Airflow sensor recalibrated in March, nonlinear response expected above 50kW.\"}')",
+      "PowerShell(npm.cmd run test:watchers)",
+      "PowerShell(npm.cmd run rehearse)"
+    ]
+  }
+}
