@@ -1,6 +1,7 @@
 import type { LedgerEntry, Mode, Subsystem, WatcherOutput } from "./types";
 import { firingWatchers } from "./aggregate";
 import { EPISODES, onsetPhrase, waterEscalationPhrase } from "./analysis";
+import { canonicalEntry } from "./contract";
 
 /**
  * The deterministic honesty rules. These are computed in code and then used
@@ -163,6 +164,22 @@ export function ruleScope(watchers: WatcherOutput[]): ScopeRuling {
 }
 
 /**
+ * Which note a ledger row is about.
+ *
+ * Person C's own fixture uses `entry: "Entry 1"`. Person B's reconciliation
+ * agent emits `id: "entry_1"` and `source_label: "Cloudy's notes — Entry 1"`
+ * with no `entry` field at all — so matching on `entry` alone would find zero
+ * relevant rows against their ledger and silently stop reporting disputes.
+ */
+export function ledgerEntryLabel(row: LedgerEntry): string | null {
+  for (const candidate of [row.entry, row.id, row.source_label]) {
+    const label = canonicalEntry(candidate);
+    if (label) return label;
+  }
+  return null;
+}
+
+/**
  * Ledger rows relevant to the currently-active watchers. If any of these is
  * `disputed`, the Voice agent must name the disagreement rather than pretend
  * certainty.
@@ -184,7 +201,8 @@ export function relevantLedgerEntries(
     // A null/!object row is Person B's data, not ours — one malformed entry
     // must not throw and take the whole Voice call down with it.
     if (!row || typeof row !== "object") return false;
-    if (row.entry && activeEntries.has(row.entry)) return true;
+    const label = ledgerEntryLabel(row);
+    if (label && activeEntries.has(label)) return true;
     if (row.subsystem && activeSubsystems.has(row.subsystem)) return true;
     return false;
   });
@@ -199,7 +217,7 @@ export function relevantLedgerEntries(
  * earned. Erring toward "this is disputed" is the safe direction.
  */
 const DISPUTE_FIELDS = ["status", "state", "verification", "verdict", "confidence"];
-const DISPUTE_WORDS = /(disput|disagree|contest|conflict|contradict|unresolved)/;
+const DISPUTE_WORDS = /(disput|disagree|contest|conflict|contradict|unresolved|refuted)/;
 /**
  * "undisputed" / "indisputable" mean the opposite. The prefix only negates when
  * stripping it leaves a dispute word — "unresolved" is itself a dispute marker,
@@ -219,6 +237,12 @@ export function isDisputed(row: LedgerEntry): boolean {
     if (DISPUTE_WORDS.test(normalised) && !NEGATED_STATUS.test(normalised)) {
       return true;
     }
+  }
+
+  // Person B's reconciliation agent points at the row it conflicts with rather
+  // than setting a status. A non-null pointer IS the disagreement.
+  if (typeof row.conflicts_with === "string" && row.conflicts_with.trim()) {
+    return true;
   }
 
   // Some ledgers carry an explicit flag instead of a status string. Accept the

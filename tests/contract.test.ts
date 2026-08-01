@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { canonicalEntry, normaliseWatcherBundle } from "@/lib/contract";
 import { aggregate } from "@/lib/aggregate";
-import { rulePredictedEscalation, isDisputed } from "@/lib/escalation";
+import {
+  rulePredictedEscalation,
+  isDisputed,
+  ledgerEntryLabel,
+  relevantLedgerEntries,
+  disputedLedgerEntries,
+} from "@/lib/escalation";
 import { FIXTURES } from "@/lib/fixtures/watchers";
 
 describe("canonicalEntry", () => {
@@ -125,5 +131,56 @@ describe("isDisputed — tolerant of ledger vocabulary", () => {
     expect(isDisputed({ status: "confirmed" })).toBe(false);
     expect(isDisputed({ status: "unverified" })).toBe(false);
     expect(isDisputed({})).toBe(false);
+  });
+});
+
+describe("Person B's ledger shape (ClaudeHackathon/lib/types.ts LedgerRow)", () => {
+  // Their reconciliation agent emits no `entry` and no `subsystem` field. If we
+  // matched on those alone, ZERO rows would ever be relevant and disputes would
+  // silently stop surfacing — the Voice agent claiming certainty over contested
+  // knowledge, with nothing in warnings[] to show for it.
+  const theirRow = (over: Record<string, unknown> = {}) => ({
+    id: "entry_3",
+    source_label: "Cloudy's notes — Entry 3",
+    claim: "The fans can turn at full power while moving no air.",
+    verdict: "supported",
+    evidence: "airflow = 0.1250 x power - 1.5000, r2 = 0.999999",
+    conflicts_with: null,
+    data_leans_toward: null,
+    operational_rule: "residual < -0.5006",
+    note_to_dragons: "The fans are spinning but the air is not moving.",
+    timestamp_added: "2026-08-01T09:00:00Z",
+    ...over,
+  });
+
+  it("finds their row relevant via id / source_label, with no entry field", () => {
+    const relevant = relevantLedgerEntries(FIXTURES.VENT_FIRING.watchers, [theirRow()]);
+    expect(relevant).toHaveLength(1);
+  });
+
+  it("resolves the note label from id or source_label", () => {
+    expect(ledgerEntryLabel(theirRow())).toBe("Entry 3");
+    expect(ledgerEntryLabel({ source_label: "Cloudy's notes — Entry 1" })).toBe("Entry 1");
+    expect(ledgerEntryLabel({ id: "live_1754030000000" })).toBeNull();
+  });
+
+  it("treats their verdict vocabulary correctly", () => {
+    expect(isDisputed(theirRow({ verdict: "disputed" }))).toBe(true);
+    // A refuted note must not be cited as established fact either.
+    expect(isDisputed(theirRow({ verdict: "refuted" }))).toBe(true);
+    expect(isDisputed(theirRow({ verdict: "supported" }))).toBe(false);
+    expect(isDisputed(theirRow({ verdict: "untestable" }))).toBe(false);
+  });
+
+  it("treats a non-null conflicts_with pointer as the disagreement", () => {
+    expect(isDisputed(theirRow({ conflicts_with: "entry_1" }))).toBe(true);
+    expect(isDisputed(theirRow({ conflicts_with: null }))).toBe(false);
+  });
+
+  it("surfaces their disputed row through the full guardrail", () => {
+    const disputed = disputedLedgerEntries(FIXTURES.VENT_FIRING.watchers, [
+      theirRow({ verdict: "refuted" }),
+    ]);
+    expect(disputed).toHaveLength(1);
   });
 });
