@@ -1,0 +1,16 @@
+class Solution:
+    def removeNthFromEnd(self, head: Optional[ListNode], n: int) -> Optional[ListNode]:
+        dummy = ListNode(0, head)
+        fast = slow = dummy
+
+        # Create a gap of n + 1 nodes.
+        for _ in range(n + 1):
+            fast = fast.next
+
+        # When fast reaches the end, slow is before the target.
+        while fast:
+            fast = fast.next
+            slow = slow.next
+
+        slow.next = slow.next.next
+        return dummy.next
